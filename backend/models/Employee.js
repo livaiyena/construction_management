@@ -5,11 +5,16 @@ const Role = require('./Role');
 
 const Employee = sequelize.define('Employee', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    name: { type: DataTypes.STRING, allowNull: false },
+    first_name: { type: DataTypes.STRING, allowNull: false },
+    last_name: { type: DataTypes.STRING, allowNull: false },
+    email: { type: DataTypes.STRING },
+    address: { type: DataTypes.STRING },
+    hire_date: { type: DataTypes.DATE },
+    status: { type: DataTypes.STRING, defaultValue: 'aktif' },
 
     RoleId: {
         type: DataTypes.INTEGER,
-        allowNull: true, // Geçici olarak null olabilir
+        allowNull: true,
         references: {
             model: Role,
             key: 'id'

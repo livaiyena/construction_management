@@ -9,7 +9,7 @@ const Document = sequelize.define('Document', {
     },
     ProjectId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true, // Genel dökümanlar için opsiyonel
         references: {
             model: 'Projects',
             key: 'id'

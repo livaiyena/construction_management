@@ -17,7 +17,7 @@ const Attendance = sequelize.define('Attendance', {
     },
     ProjectId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true, // Proje ataması opsiyonel
         references: {
             model: 'Projects',
             key: 'id'

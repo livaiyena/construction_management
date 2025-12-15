@@ -15,22 +15,22 @@ app.use(express.json());
 app.use(cors());
 
 
-// Rotalar
+// Rotalar - Aktif Kullanımda Olanlar
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/employees', require('./routes/employees'));
-app.use('/api/stats', require('./routes/stats'));
 app.use('/api/roles', require('./routes/roles'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/expenses', require('./routes/expenses'));
-app.use('/api/reports', require('./routes/reports')); // Pure SQL raporlama endpoint'leri
-app.use('/api/settings', require('./routes/settings'));
-app.use('/api/users', require('./routes/users'));
 app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/materials', require('./routes/materials'));
 app.use('/api/suppliers', require('./routes/suppliers'));
-app.use('/api/documents', require('./routes/documents'));
 app.use('/api/audit', require('./routes/audit'));
+app.use('/api/reports', require('./routes/reports'));
+
+// Gelecekte Kullanılacak (Frontend'de henüz implement edilmedi)
+app.use('/api/users', require('./routes/users')); // Admin kullanıcı yönetimi için
+app.use('/api/documents', require('./routes/documents')); // Proje dökümanları için
 
 const PORT = process.env.PORT || 5000;
 

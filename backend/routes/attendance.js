@@ -9,7 +9,7 @@ router.get('/', auth, async (req, res) => {
         const attendances = await Attendance.findAll({
             // userId filtresi kaldırıldı
             include: [
-                { model: Employee, attributes: ['id', 'name'] },
+                { model: Employee, attributes: ['id', 'first_name', 'last_name'] },
                 { model: Project, attributes: ['id', 'name'] }
             ],
             order: [['date', 'DESC']]
@@ -30,7 +30,7 @@ router.get('/project/:projectId', auth, async (req, res) => {
                 userId: req.user.id
             },
             include: [
-                { model: Employee, attributes: ['id', 'name'] }
+                { model: Employee, attributes: ['id', 'first_name', 'last_name'] }
             ],
             order: [['date', 'DESC']]
         });
@@ -63,7 +63,7 @@ router.post('/', auth, async (req, res) => {
 
         const attendanceWithDetails = await Attendance.findByPk(attendance.id, {
             include: [
-                { model: Employee, attributes: ['id', 'name'] },
+                { model: Employee, attributes: ['id', 'first_name', 'last_name'] },
                 { model: Project, attributes: ['id', 'name'] }
             ]
         });
@@ -97,7 +97,7 @@ router.put('/:id', auth, async (req, res) => {
 
         const updatedAttendance = await Attendance.findByPk(attendance.id, {
             include: [
-                { model: Employee, attributes: ['id', 'name'] },
+                { model: Employee, attributes: ['id', 'first_name', 'last_name'] },
                 { model: Project, attributes: ['id', 'name'] }
             ]
         });

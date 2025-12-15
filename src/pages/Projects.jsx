@@ -93,9 +93,7 @@ export default function Projects() {
             
             const dataToSend = {
                 ...formData,
-                budget: parseFloat(budgetValue) || 0,
-                // Bütçeyi API'ye number olarak gönder
-                budget: parseFloat(formData.budget) || 0, 
+                budget: parseFloat(budgetValue) || 0
             };
 
             if (isEditing) {

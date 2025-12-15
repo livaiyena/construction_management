@@ -9,7 +9,7 @@ const Expense = sequelize.define('Expense', {
     },
     ProjectId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true, // Genel harcamalar için opsiyonel
         references: {
             model: 'Projects',
             key: 'id'

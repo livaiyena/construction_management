@@ -65,7 +65,7 @@ router.get('/employee-attendance-stats', async (req, res) => {
         const query = `
             SELECT 
                 e.id,
-                e.name AS employee_name,
+                CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
                 COALESCE(r.name, 'Belirtilmemiş') AS role_title,
                 COUNT(CASE WHEN a.status = 'Geldi' THEN 1 END) AS days_present,
                 COUNT(CASE WHEN a.status = 'Gelmedi' THEN 1 END) AS days_absent,
@@ -74,7 +74,7 @@ router.get('/employee-attendance-stats', async (req, res) => {
             FROM "Employees" e
             LEFT JOIN "Roles" r ON e."RoleId" = r.id
             LEFT JOIN "Attendances" a ON e.id = a."EmployeeId"
-            GROUP BY e.id, e.name, r.name
+            GROUP BY e.id, e.first_name, e.last_name, r.name
             HAVING COUNT(a.id) > 0
             ORDER BY days_present DESC
         `;
@@ -159,7 +159,7 @@ router.get('/top-active-employees', async (req, res) => {
         const query = `
             SELECT 
                 e.id,
-                e.name,
+                CONCAT(e.first_name, ' ', e.last_name) AS name,
                 e.phone,
                 r.name AS role,
                 COUNT(a.id) AS attendance_count,
@@ -172,7 +172,7 @@ router.get('/top-active-employees', async (req, res) => {
             LEFT JOIN "Roles" r ON e."RoleId" = r.id
             LEFT JOIN "Attendances" a ON e.id = a."EmployeeId"
             WHERE e."isActive" = true
-            GROUP BY e.id, e.name, e.phone, r.name
+            GROUP BY e.id, e.first_name, e.last_name, e.phone, r.name
             HAVING COUNT(a.id) > 0
             ORDER BY attendance_rate DESC
             LIMIT 10
@@ -345,13 +345,13 @@ router.get('/employee-cost-report', async (req, res) => {
         const query = `
             SELECT 
                 e.id,
-                e.name AS employee_name,
+                CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
                 r.name AS role,
-                CAST(COALESCE(r.default_daily_rate, 0) AS NUMERIC) AS default_daily_rate,
+                CAST(COALESCE(e.daily_rate, r.default_daily_rate, 0) AS NUMERIC) AS daily_rate,
                 COUNT(CASE WHEN a.status = 'Geldi' THEN 1 END) AS days_worked,
                 CAST(COALESCE(SUM(a.worked_hours), 0) AS NUMERIC) AS total_hours,
                 ROUND(
-                    CAST(COALESCE(r.default_daily_rate, 0) AS NUMERIC) * 
+                    CAST(COALESCE(e.daily_rate, r.default_daily_rate, 0) AS NUMERIC) * 
                     COUNT(CASE WHEN a.status = 'Geldi' THEN 1 END), 
                     2
                 ) AS total_cost
@@ -359,7 +359,7 @@ router.get('/employee-cost-report', async (req, res) => {
             INNER JOIN "Roles" r ON e."RoleId" = r.id
             LEFT JOIN "Attendances" a ON e.id = a."EmployeeId"
             WHERE e."isActive" = true
-            GROUP BY e.id, e.name, r.name, r.default_daily_rate
+            GROUP BY e.id, e.first_name, e.last_name, r.name, e.daily_rate, r.default_daily_rate
             HAVING COUNT(CASE WHEN a.status = 'Geldi' THEN 1 END) > 0
             ORDER BY total_cost DESC
         `;

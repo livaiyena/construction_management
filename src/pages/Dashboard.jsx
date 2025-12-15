@@ -13,6 +13,7 @@ export default function Dashboard() {
     const [showAttendanceModal, setShowAttendanceModal] = useState(false)
     const [showProjectModal, setShowProjectModal] = useState(false)
     const [showExpenseModal, setShowExpenseModal] = useState(false)
+    const [showEmployeesModal, setShowEmployeesModal] = useState(false)
     const [selectedStatus, setSelectedStatus] = useState('')
     const [selectedProject, setSelectedProject] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -20,7 +21,7 @@ export default function Dashboard() {
     
     const [dashboardData, setDashboardData] = useState({
         projects: { total: 0, active: 0, completed: 0 },
-        employees: { total: 0, active: 0 },
+        employees: { total: 0, active: 0, allEmployees: [] },
         expenses: { total: 0, byCategory: [], allExpenses: [] },
         attendance: { present: 0, absent: 0, leave: 0 },
         roles: { total: 0 },
@@ -79,7 +80,8 @@ export default function Dashboard() {
                 },
                 employees: {
                     total: employees.length,
-                    active: employees.filter(e => e.status === 'Aktif').length
+                    active: employees.filter(e => e.status === 'aktif').length,
+                    allEmployees: employees
                 },
                 expenses: {
                     total: expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
@@ -90,7 +92,7 @@ export default function Dashboard() {
                 roles: { total: roles.length },
                 recentActivities: attendance.slice(0, 5).map(a => ({
                     id: a.id,
-                    content: `${a.Employee?.name || 'Bilinmeyen'} - ${a.status}`,
+                    content: `${a.Employee?.first_name || ''} ${a.Employee?.last_name || 'Bilinmeyen'} - ${a.status}`,
                     type: a.status === 'Geldi' ? 'success' : 'warning',
                     createdAt: a.createdAt
                 })),
@@ -140,7 +142,7 @@ export default function Dashboard() {
             color: 'text-emerald-600',
             bg: 'bg-emerald-50',
             border: 'border-emerald-200',
-            onClick: () => navigate('/team')
+            onClick: () => setShowEmployeesModal(true)
         },
         {
             label: 'Toplam Harcama',
@@ -150,7 +152,7 @@ export default function Dashboard() {
             color: 'text-violet-600',
             bg: 'bg-violet-50',
             border: 'border-violet-200',
-            onClick: () => navigate('/expenses')
+            onClick: () => setShowExpenseModal(true)
         },
         {
             label: 'Roller',
@@ -165,7 +167,6 @@ export default function Dashboard() {
     ]
 
     return (
-        <>
         <div className="space-y-8 animate-fade-in">
             <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                 <div>
@@ -402,12 +403,11 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
-        </div>
 
-        {/* YOKLAMA MODAL */}
-        {showAttendanceModal && (
-            <Portal>
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowAttendanceModal(false)}>
+            {/* YOKLAMA MODAL */}
+            {showAttendanceModal && (
+                <Portal>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowAttendanceModal(false)}>
                     <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
                     {/* Modal Header */}
                     <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white">
@@ -463,7 +463,9 @@ export default function Dashboard() {
                                                      <Clock size={20} />}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-slate-800">{attendance.Employee?.name || 'Bilinmeyen Çalışan'}</p>
+                                                    <p className="font-semibold text-slate-800">
+                                                        {attendance.Employee?.first_name || ''} {attendance.Employee?.last_name || 'Bilinmeyen Çalışan'}
+                                                    </p>
                                                     <p className="text-xs text-slate-500">{attendance.Project?.name || 'Proje Bilinmiyor'}</p>
                                                 </div>
                                             </div>
@@ -768,6 +770,145 @@ export default function Dashboard() {
             </div>
             </Portal>
         )}
-        </>
+
+        {/* ÇALIŞAN LİSTESİ MODAL */}
+        {showEmployeesModal && (
+            <Portal>
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowEmployeesModal(false)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    {/* Modal Header */}
+                    <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                                <h2 className="text-2xl font-bold mb-1">Çalışan Listesi</h2>
+                                <p className="text-emerald-100 text-sm">Tüm çalışanlar ve detayları</p>
+                            </div>
+                            <button
+                                onClick={() => setShowEmployeesModal(false)}
+                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
+                        {/* İstatistikler */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                                <p className="text-xs text-emerald-600 mb-1 font-semibold uppercase">Toplam Çalışan</p>
+                                <p className="text-2xl font-bold text-emerald-700">
+                                    {dashboardData.employees.total}
+                                </p>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                                <p className="text-xs text-blue-600 mb-1 font-semibold uppercase">Aktif Çalışan</p>
+                                <p className="text-2xl font-bold text-blue-700">
+                                    {dashboardData.employees.active}
+                                </p>
+                            </div>
+                            <div className="bg-violet-50 p-4 rounded-xl border border-violet-200">
+                                <p className="text-xs text-violet-600 mb-1 font-semibold uppercase">Pasif Çalışan</p>
+                                <p className="text-2xl font-bold text-violet-700">
+                                    {dashboardData.employees.total - dashboardData.employees.active}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Tablo */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200">
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Çalışan</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Rol</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">İletişim</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Günlük Ücret</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Durum</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {dashboardData.employees.allEmployees.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="5" className="px-4 py-12 text-center text-slate-500">
+                                                    <Users className="mx-auto text-slate-300 mb-2" size={48} />
+                                                    Kayıtlı çalışan bulunamadı
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            dashboardData.employees.allEmployees.map((employee) => (
+                                                <tr key={employee.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
+                                                                {employee.first_name?.charAt(0)}{employee.last_name?.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-semibold text-slate-800">
+                                                                    {employee.first_name} {employee.last_name}
+                                                                </p>
+                                                                <p className="text-xs text-slate-500">
+                                                                    {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString('tr-TR') : '-'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                                                            {employee.Role?.name || 'Rol Yok'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="text-sm">
+                                                            <p className="text-slate-700">{employee.phone || '-'}</p>
+                                                            <p className="text-xs text-slate-500">{employee.email || '-'}</p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span className="font-semibold text-slate-800">
+                                                            {employee.daily_rate ? `${employee.daily_rate} ₺` : '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                                                            employee.status === 'aktif' 
+                                                                ? 'bg-emerald-100 text-emerald-700' 
+                                                                : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {employee.status === 'aktif' ? 'Aktif' : 'Pasif'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                        <button
+                            onClick={() => setShowEmployeesModal(false)}
+                            className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
+                        >
+                            Kapat
+                        </button>
+                        <button
+                            onClick={() => { setShowEmployeesModal(false); navigate('/team') }}
+                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold flex items-center gap-2"
+                        >
+                            Tüm Çalışanlara Git
+                            <ArrowRight size={18} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+            </Portal>
+        )}
+    </div>
     )
 }

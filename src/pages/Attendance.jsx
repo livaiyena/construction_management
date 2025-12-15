@@ -246,7 +246,9 @@ export default function Attendance() {
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div className="flex items-center gap-2">
                                             <Users className="text-slate-400" size={16} />
-                                            <span className="font-semibold">{attendance.Employee?.name || 'Bilinmeyen'}</span>
+                                            <span className="font-semibold">
+                                                {attendance.Employee?.first_name || ''} {attendance.Employee?.last_name || 'Bilinmeyen'}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Building2 className="text-slate-400" size={16} />
