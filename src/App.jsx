@@ -7,12 +7,15 @@ import Attendance from './pages/Attendance'
 import Expenses from './pages/Expenses'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import SystemLogs from './pages/SystemLogs'
 import Inventory from './pages/Inventory'
+import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
+import { NotificationProvider } from './context/NotificationContext'
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated, loading } = useAuth();
@@ -25,28 +28,32 @@ function ProtectedRoute({ children }) {
 export default function App() {
     return (
         <AuthProvider>
-            <ToastProvider>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/login" element={<LoginWrapper />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/" element={
-                            <ProtectedRoute>
-                                <Layout />
-                            </ProtectedRoute>
-                        }>
-                            <Route index element={<Dashboard />} />
-                            <Route path="projects" element={<Projects />} />
-                            <Route path="team" element={<Team />} />
-                            <Route path="attendance" element={<Attendance />} />
-                            <Route path="expenses" element={<Expenses />} />
-                            <Route path="inventory" element={<Inventory />} />
-                            <Route path="reports" element={<Reports />} />
-                            <Route path="settings" element={<Settings />} />
-                        </Route>
-                    </Routes>
-                </BrowserRouter>
-            </ToastProvider>
+            <NotificationProvider>
+                <ToastProvider>
+                    <BrowserRouter>
+                        <Routes>
+                            <Route path="/login" element={<LoginWrapper />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/" element={
+                                <ProtectedRoute>
+                                    <Layout />
+                                </ProtectedRoute>
+                            }>
+                                <Route index element={<Dashboard />} />
+                                <Route path="projects" element={<Projects />} />
+                                <Route path="team" element={<Team />} />
+                                <Route path="attendance" element={<Attendance />} />
+                                <Route path="expenses" element={<Expenses />} />
+                                <Route path="inventory" element={<Inventory />} />
+                                <Route path="reports" element={<Reports />} />
+                                <Route path="settings" element={<Settings />} />
+                                <Route path="system-logs" element={<SystemLogs />} />
+                                <Route path="profile" element={<Profile />} />
+                            </Route>
+                        </Routes>
+                    </BrowserRouter>
+                </ToastProvider>
+            </NotificationProvider>
         </AuthProvider>
     )
 }

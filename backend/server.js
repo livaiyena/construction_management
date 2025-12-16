@@ -27,6 +27,8 @@ app.use('/api/materials', require('./routes/materials'));
 app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/categories', require('./routes/materialCategories'));
+app.use('/api/equipment-types', require('./routes/equipmentTypes'));
 
 // Gelecekte Kullanılacak (Frontend'de henüz implement edilmedi)
 app.use('/api/users', require('./routes/users')); // Admin kullanıcı yönetimi için

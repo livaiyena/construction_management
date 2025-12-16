@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Building, Users, DollarSign, Activity, TrendingUp, Bell, Briefcase, Calendar, ArrowRight, CheckCircle2, Clock, AlertCircle, Building2 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts'
 import { useNavigate } from 'react-router-dom'
@@ -6,6 +6,9 @@ import Skeleton from '../components/ui/Skeleton'
 import Portal from '../components/Portal'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
+
+import { generateDashboardReport } from '../utils/reportUtils'
+import { useNotification } from '../context/NotificationContext'
 
 export default function Dashboard() {
     const navigate = useNavigate()
@@ -17,15 +20,32 @@ export default function Dashboard() {
     const [selectedStatus, setSelectedStatus] = useState('')
     const [selectedProject, setSelectedProject] = useState(null)
     const [loading, setLoading] = useState(true)
+    const notificationRef = useRef(null)
+
     const { showToast } = useToast()
-    
+    const { notifications, unreadCount, markAllAsRead } = useNotification()
+
+    // Close notifications when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [])
+
     const [dashboardData, setDashboardData] = useState({
         projects: { total: 0, active: 0, completed: 0 },
         employees: { total: 0, active: 0, allEmployees: [] },
         expenses: { total: 0, byCategory: [], allExpenses: [] },
         attendance: { present: 0, absent: 0, leave: 0 },
         roles: { total: 0 },
-        recentActivities: [],
+        attendance: { present: 0, absent: 0, leave: 0 },
+        roles: { total: 0 },
         todayAttendance: [],
         activeProjects: [],
         allProjects: []
@@ -90,12 +110,7 @@ export default function Dashboard() {
                 },
                 attendance: attendanceStats,
                 roles: { total: roles.length },
-                recentActivities: attendance.slice(0, 5).map(a => ({
-                    id: a.id,
-                    content: `${a.Employee?.first_name || ''} ${a.Employee?.last_name || 'Bilinmeyen'} - ${a.status}`,
-                    type: a.status === 'Geldi' ? 'success' : 'warning',
-                    createdAt: a.createdAt
-                })),
+
                 todayAttendance: todayAttendance,
                 activeProjects: projects.filter(p => p.status === 'Devam Ediyor').slice(0, 5),
                 allProjects: projects // Tüm proje verilerini sakla
@@ -111,11 +126,17 @@ export default function Dashboard() {
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
     const handleDownloadReport = () => {
-        showToast('Rapor indirme özelliği yakında eklenecek!', 'info')
+        const result = generateDashboardReport(dashboardData);
+        if (result.success) {
+            showToast('Rapor başarıyla indirildi.', 'success');
+            addNotification('success', 'Genel Dashboard Raporu indirildi', 'REPORT');
+        } else {
+            showToast('Rapor oluşturulurken bir hata oluştu.', 'error');
+        }
     }
-    
+
     const getActivityColor = (type) => {
-        switch(type) {
+        switch (type) {
             case 'success': return 'bg-emerald-500';
             case 'danger': return 'bg-red-500';
             case 'warning': return 'bg-amber-500';
@@ -173,14 +194,19 @@ export default function Dashboard() {
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Kontrol Paneli</h1>
                     <p className="text-slate-500 mt-1">Şantiye verileri ve günlük özetler</p>
                 </div>
-                <div className="flex gap-3 relative">
+                <div className="flex gap-3 relative" ref={notificationRef}>
                     <button
-                        onClick={() => setShowNotifications(!showNotifications)}
+                        onClick={() => {
+                            setShowNotifications(!showNotifications)
+                            if (!showNotifications) {
+                                markAllAsRead();
+                            }
+                        }}
                         className={`btn-secondary flex items-center gap-2 relative ${showNotifications ? 'bg-slate-100' : ''}`}
                     >
                         <Bell size={18} />
                         <span className="hidden sm:inline">Bildirimler</span>
-                        {dashboardData.recentActivities.length > 0 && (
+                        {unreadCount > 0 && (
                             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
                         )}
                     </button>
@@ -189,19 +215,22 @@ export default function Dashboard() {
                         <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-fade-in overflow-hidden">
                             <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
                                 <h3 className="font-bold text-slate-700">Son Hareketler</h3>
-                                <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-bold">{dashboardData.recentActivities.length}</span>
+                                <div className="flex gap-2">
+                                    <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-bold">{notifications.length}</span>
+                                    {unreadCount > 0 && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">{unreadCount} Yeni</span>}
+                                </div>
                             </div>
                             <div className="max-h-64 overflow-y-auto">
-                                {dashboardData.recentActivities.length === 0 ? (
+                                {notifications.length === 0 ? (
                                     <div className="p-4 text-center text-slate-400 text-sm">Henüz işlem yok.</div>
                                 ) : (
-                                    dashboardData.recentActivities.map((act) => (
-                                        <div key={act.id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-3">
+                                    notifications.map((act) => (
+                                        <div key={act.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-3 ${!act.isRead ? 'bg-blue-50/50' : ''}`}>
                                             <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${getActivityColor(act.type)}`} />
                                             <div>
-                                                <p className="text-sm text-slate-700 leading-snug">{act.content}</p>
+                                                <p className="text-sm text-slate-700 leading-snug">{act.message}</p>
                                                 <p className="text-xs text-slate-400 mt-1">
-                                                    {new Date(act.createdAt).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}
+                                                    {new Date(act.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} - {new Date(act.timestamp).toLocaleDateString('tr-TR')}
                                                 </p>
                                             </div>
                                         </div>
@@ -385,9 +414,9 @@ export default function Dashboard() {
                         <p className="text-slate-400 text-sm text-center py-8">Devam eden proje yok.</p>
                     ) : (
                         dashboardData.activeProjects.map((project) => (
-                            <div 
-                                key={project.id} 
-                                className="flex gap-4 items-center p-4 bg-gradient-to-r from-primary-50 to-white rounded-xl border border-primary-100 hover:shadow-md transition-all cursor-pointer group" 
+                            <div
+                                key={project.id}
+                                className="flex gap-4 items-center p-4 bg-gradient-to-r from-primary-50 to-white rounded-xl border border-primary-100 hover:shadow-md transition-all cursor-pointer group"
                                 onClick={() => { setSelectedProject(project); setShowProjectModal(true) }}
                             >
                                 <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 group-hover:scale-110 transition-transform">
@@ -407,42 +436,28 @@ export default function Dashboard() {
             {/* YOKLAMA MODAL */}
             {showAttendanceModal && (
                 <Portal>
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowAttendanceModal(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    {/* Modal Header */}
-                    <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h2 className="text-2xl font-bold">Bugünkü Yoklama - {selectedStatus}</h2>
-                                <p className="text-primary-100 text-sm mt-1">
-                                    {new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                </p>
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowAttendanceModal(false)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-2xl font-bold">Bugünkü Yoklama - {selectedStatus}</h2>
+                                        <p className="text-primary-100 text-sm mt-1">
+                                            {new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowAttendanceModal(false)}
+                                        className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
-                            <button
-                                onClick={() => setShowAttendanceModal(false)}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    </div>
 
-                    {/* Modal Content */}
-                    <div className="p-6 overflow-y-auto max-h-[calc(80vh-200px)]">
-                        {dashboardData.todayAttendance
-                            .filter(a => {
-                                if (selectedStatus === 'İzinli') {
-                                    return a.status === 'İzinli' || a.status === 'Raporlu'
-                                }
-                                return a.status === selectedStatus
-                            })
-                            .length === 0 ? (
-                            <div className="text-center py-12">
-                                <Calendar className="mx-auto text-slate-300 mb-4" size={48} />
-                                <p className="text-slate-500">Bu durumda kayıt bulunamadı</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
+                            {/* Modal Content */}
+                            <div className="p-6 overflow-y-auto max-h-[calc(80vh-200px)]">
                                 {dashboardData.todayAttendance
                                     .filter(a => {
                                         if (selectedStatus === 'İzinli') {
@@ -450,465 +465,475 @@ export default function Dashboard() {
                                         }
                                         return a.status === selectedStatus
                                     })
-                                    .map((attendance, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                    attendance.status === 'Geldi' ? 'bg-emerald-100 text-emerald-600' :
-                                                    attendance.status === 'Gelmedi' ? 'bg-red-100 text-red-600' :
-                                                    'bg-amber-100 text-amber-600'
-                                                }`}>
-                                                    {attendance.status === 'Geldi' ? <CheckCircle2 size={20} /> :
-                                                     attendance.status === 'Gelmedi' ? <AlertCircle size={20} /> :
-                                                     <Clock size={20} />}
+                                    .length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <Calendar className="mx-auto text-slate-300 mb-4" size={48} />
+                                        <p className="text-slate-500">Bu durumda kayıt bulunamadı</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {dashboardData.todayAttendance
+                                            .filter(a => {
+                                                if (selectedStatus === 'İzinli') {
+                                                    return a.status === 'İzinli' || a.status === 'Raporlu'
+                                                }
+                                                return a.status === selectedStatus
+                                            })
+                                            .map((attendance, idx) => (
+                                                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${attendance.status === 'Geldi' ? 'bg-emerald-100 text-emerald-600' :
+                                                            attendance.status === 'Gelmedi' ? 'bg-red-100 text-red-600' :
+                                                                'bg-amber-100 text-amber-600'
+                                                            }`}>
+                                                            {attendance.status === 'Geldi' ? <CheckCircle2 size={20} /> :
+                                                                attendance.status === 'Gelmedi' ? <AlertCircle size={20} /> :
+                                                                    <Clock size={20} />}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-semibold text-slate-800">
+                                                                {attendance.Employee?.first_name || ''} {attendance.Employee?.last_name || 'Bilinmeyen Çalışan'}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500">{attendance.Project?.name || 'Proje Bilinmiyor'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${attendance.status === 'Geldi' ? 'bg-emerald-100 text-emerald-700' :
+                                                        attendance.status === 'Gelmedi' ? 'bg-red-100 text-red-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                        {attendance.status}
+                                                    </span>
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold text-slate-800">
-                                                        {attendance.Employee?.first_name || ''} {attendance.Employee?.last_name || 'Bilinmeyen Çalışan'}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500">{attendance.Project?.name || 'Proje Bilinmiyor'}</p>
-                                                </div>
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                attendance.status === 'Geldi' ? 'bg-emerald-100 text-emerald-700' :
-                                                attendance.status === 'Gelmedi' ? 'bg-red-100 text-red-700' :
-                                                'bg-amber-100 text-amber-700'
-                                            }`}>
-                                                {attendance.status}
-                                            </span>
+                                            ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3">
+                                <button
+                                    onClick={() => setShowAttendanceModal(false)}
+                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
+                                >
+                                    Kapat
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowAttendanceModal(false)
+                                        navigate(`/attendance?status=${selectedStatus}`)
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold flex items-center justify-center gap-2"
+                                >
+                                    Tüm Detayları Gör
+                                    <ArrowRight size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Portal>
+            )}
+
+            {/* HARCAMA DETAY MODAL */}
+            {showExpenseModal && (
+                <Portal>
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowExpenseModal(false)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-violet-600 to-violet-700 p-6 text-white">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl font-bold mb-1">Proje Bazında Harcamalar</h2>
+                                        <p className="text-violet-100 text-sm">Projelere göre toplam harcama dağılımı</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowExpenseModal(false)}
+                                        className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
+                                {/* İstatistikler */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                    <div className="bg-violet-50 p-4 rounded-xl border border-violet-200">
+                                        <p className="text-xs text-violet-600 mb-1 font-semibold uppercase">Toplam Harcama</p>
+                                        <p className="text-2xl font-bold text-violet-700">
+                                            {dashboardData.expenses.total.toLocaleString('tr-TR')} ₺
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                                        <p className="text-xs text-blue-600 mb-1 font-semibold uppercase">Proje Sayısı</p>
+                                        <p className="text-2xl font-bold text-blue-700">
+                                            {dashboardData.activeProjects.length}
+                                        </p>
+                                    </div>
+                                    <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                                        <p className="text-xs text-emerald-600 mb-1 font-semibold uppercase">Ortalama Harcama</p>
+                                        <p className="text-2xl font-bold text-emerald-700">
+                                            {dashboardData.activeProjects.length > 0
+                                                ? (dashboardData.expenses.total / dashboardData.activeProjects.length).toLocaleString('tr-TR')
+                                                : 0} ₺
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Sütun Grafiği */}
+                                <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4">Proje Bazında Harcama Dağılımı</h3>
+                                    {dashboardData.allProjects && dashboardData.allProjects.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={(() => {
+                                                return dashboardData.allProjects.map((project, index) => {
+                                                    // Her proje için gerçek harcamaları topla
+                                                    const projectExpenses = (dashboardData.expenses.allExpenses || []).filter(
+                                                        exp => exp.ProjectId === project.id
+                                                    )
+                                                    const projectTotal = projectExpenses.reduce(
+                                                        (sum, exp) => sum + parseFloat(exp.amount || 0),
+                                                        0
+                                                    )
+                                                    return {
+                                                        name: project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name,
+                                                        fullName: project.name,
+                                                        harcama: projectTotal,
+                                                        fill: COLORS[index % COLORS.length]
+                                                    }
+                                                })
+                                            })()}>
+                                                <XAxis
+                                                    dataKey="name"
+                                                    angle={-45}
+                                                    textAnchor="end"
+                                                    height={80}
+                                                    tick={{ fontSize: 12 }}
+                                                />
+                                                <YAxis
+                                                    tickFormatter={(value) => `${(value / 1000).toLocaleString('tr-TR')}K`}
+                                                    tick={{ fontSize: 12 }}
+                                                />
+                                                <Tooltip
+                                                    formatter={(value) => [`${value.toLocaleString('tr-TR')} ₺`, 'Harcama']}
+                                                    labelFormatter={(label) => {
+                                                        const item = dashboardData.allProjects.find(p =>
+                                                            (p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name) === label
+                                                        )
+                                                        return item ? item.name : label
+                                                    }}
+                                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                                />
+                                                <Bar dataKey="harcama" radius={[8, 8, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-64 text-slate-400">
+                                            <p>Aktif proje bulunamadı</p>
                                         </div>
-                                    ))}
-                            </div>
-                        )}
-                    </div>
+                                    )}
+                                </div>
 
-                    {/* Modal Footer */}
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3">
-                        <button
-                            onClick={() => setShowAttendanceModal(false)}
-                            className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
-                        >
-                            Kapat
-                        </button>
-                        <button
-                            onClick={() => {
-                                setShowAttendanceModal(false)
-                                navigate(`/attendance?status=${selectedStatus}`)
-                            }}
-                            className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold flex items-center justify-center gap-2"
-                        >
-                            Tüm Detayları Gör
-                            <ArrowRight size={18} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-            </Portal>
-        )}
-
-        {/* HARCAMA DETAY MODAL */}
-        {showExpenseModal && (
-            <Portal>
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowExpenseModal(false)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    {/* Modal Header */}
-                    <div className="bg-gradient-to-r from-violet-600 to-violet-700 p-6 text-white">
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-bold mb-1">Proje Bazında Harcamalar</h2>
-                                <p className="text-violet-100 text-sm">Projelere göre toplam harcama dağılımı</p>
-                            </div>
-                            <button
-                                onClick={() => setShowExpenseModal(false)}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Modal Content */}
-                    <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
-                        {/* İstatistikler */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div className="bg-violet-50 p-4 rounded-xl border border-violet-200">
-                                <p className="text-xs text-violet-600 mb-1 font-semibold uppercase">Toplam Harcama</p>
-                                <p className="text-2xl font-bold text-violet-700">
-                                    {dashboardData.expenses.total.toLocaleString('tr-TR')} ₺
-                                </p>
-                            </div>
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                                <p className="text-xs text-blue-600 mb-1 font-semibold uppercase">Proje Sayısı</p>
-                                <p className="text-2xl font-bold text-blue-700">
-                                    {dashboardData.activeProjects.length}
-                                </p>
-                            </div>
-                            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                                <p className="text-xs text-emerald-600 mb-1 font-semibold uppercase">Ortalama Harcama</p>
-                                <p className="text-2xl font-bold text-emerald-700">
-                                    {dashboardData.activeProjects.length > 0
-                                        ? (dashboardData.expenses.total / dashboardData.activeProjects.length).toLocaleString('tr-TR')
-                                        : 0} ₺
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Sütun Grafiği */}
-                        <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                            <h3 className="text-lg font-bold text-slate-800 mb-4">Proje Bazında Harcama Dağılımı</h3>
-                            {dashboardData.allProjects && dashboardData.allProjects.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={(() => {
-                                        return dashboardData.allProjects.map((project, index) => {
+                                {/* Detaylı Liste */}
+                                <div className="mt-6">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4">Proje Detayları</h3>
+                                    <div className="space-y-3">
+                                        {dashboardData.allProjects && dashboardData.allProjects.map((project, index) => {
                                             // Her proje için gerçek harcamaları topla
                                             const projectExpenses = (dashboardData.expenses.allExpenses || []).filter(
                                                 exp => exp.ProjectId === project.id
                                             )
                                             const projectTotal = projectExpenses.reduce(
-                                                (sum, exp) => sum + parseFloat(exp.amount || 0), 
+                                                (sum, exp) => sum + parseFloat(exp.amount || 0),
                                                 0
                                             )
-                                            return {
-                                                name: project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name,
-                                                fullName: project.name,
-                                                harcama: projectTotal,
-                                                fill: COLORS[index % COLORS.length]
-                                            }
-                                        })
-                                    })()}>
-                                        <XAxis 
-                                            dataKey="name" 
-                                            angle={-45} 
-                                            textAnchor="end" 
-                                            height={80}
-                                            tick={{ fontSize: 12 }}
-                                        />
-                                        <YAxis 
-                                            tickFormatter={(value) => `${(value / 1000).toLocaleString('tr-TR')}K`}
-                                            tick={{ fontSize: 12 }}
-                                        />
-                                        <Tooltip 
-                                            formatter={(value) => [`${value.toLocaleString('tr-TR')} ₺`, 'Harcama']}
-                                            labelFormatter={(label) => {
-                                                const item = dashboardData.allProjects.find(p => 
-                                                    (p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name) === label
-                                                )
-                                                return item ? item.name : label
-                                            }}
-                                            contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                        />
-                                        <Bar dataKey="harcama" radius={[8, 8, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex items-center justify-center h-64 text-slate-400">
-                                    <p>Aktif proje bulunamadı</p>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* Detaylı Liste */}
-                        <div className="mt-6">
-                            <h3 className="text-lg font-bold text-slate-800 mb-4">Proje Detayları</h3>
-                            <div className="space-y-3">
-                                {dashboardData.allProjects && dashboardData.allProjects.map((project, index) => {
-                                    // Her proje için gerçek harcamaları topla
-                                    const projectExpenses = (dashboardData.expenses.allExpenses || []).filter(
-                                        exp => exp.ProjectId === project.id
-                                    )
-                                    const projectTotal = projectExpenses.reduce(
-                                        (sum, exp) => sum + parseFloat(exp.amount || 0), 
-                                        0
-                                    )
-                                    
-                                    return (
-                                        <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-slate-800">{project.name}</h4>
-                                                    <p className="text-xs text-slate-500 mt-1">{project.city}, {project.district}</p>
-                                                    <p className="text-xs text-slate-600 mt-1">{projectExpenses.length} harcama kaydı</p>
+                                            return (
+                                                <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex-1">
+                                                            <h4 className="font-semibold text-slate-800">{project.name}</h4>
+                                                            <p className="text-xs text-slate-500 mt-1">{project.city}, {project.district}</p>
+                                                            <p className="text-xs text-slate-600 mt-1">{projectExpenses.length} harcama kaydı</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-lg font-bold" style={{ color: COLORS[index % COLORS.length] }}>
+                                                                {Math.floor(projectTotal).toLocaleString('tr-TR')} ₺
+                                                            </p>
+                                                            <p className="text-xs text-slate-500">Toplam Harcama</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 mt-3">
+                                                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                                                            {project.status}
+                                                        </span>
+                                                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                                            Bütçe: {project.budget ? parseFloat(project.budget).toLocaleString('tr-TR') : '0'} ₺
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-lg font-bold" style={{ color: COLORS[index % COLORS.length] }}>
-                                                        {Math.floor(projectTotal).toLocaleString('tr-TR')} ₺
-                                                    </p>
-                                                    <p className="text-xs text-slate-500">Toplam Harcama</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 mt-3">
-                                                <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
-                                                    {project.status}
-                                                </span>
-                                                <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                                                    Bütçe: {project.budget ? parseFloat(project.budget).toLocaleString('tr-TR') : '0'} ₺
-                                                </span>
-                                            </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                                <button
+                                    onClick={() => setShowExpenseModal(false)}
+                                    className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
+                                >
+                                    Kapat
+                                </button>
+                                <button
+                                    onClick={() => { setShowExpenseModal(false); navigate('/expenses') }}
+                                    className="px-6 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors font-semibold flex items-center gap-2"
+                                >
+                                    Tüm Harcamalar
+                                    <ArrowRight size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Portal>
+            )}
+
+            {/* PROJE DETAY MODAL */}
+            {showProjectModal && selectedProject && (
+                <Portal>
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowProjectModal(false)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl font-bold mb-2">{selectedProject.name}</h2>
+                                        <div className="flex flex-wrap gap-3">
+                                            <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full text-sm font-semibold text-blue-700">
+                                                <Building2 size={16} />
+                                                {selectedProject.city}, {selectedProject.district}
+                                            </span>
+                                            <span className={`px-3 py-1 rounded-full font-semibold text-sm ${selectedProject.status === 'Devam Ediyor' ? 'bg-emerald-100 text-emerald-700' :
+                                                selectedProject.status === 'Tamamlandı' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                {selectedProject.status}
+                                            </span>
                                         </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Modal Footer */}
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                        <button
-                            onClick={() => setShowExpenseModal(false)}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
-                        >
-                            Kapat
-                        </button>
-                        <button
-                            onClick={() => { setShowExpenseModal(false); navigate('/expenses') }}
-                            className="px-6 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors font-semibold flex items-center gap-2"
-                        >
-                            Tüm Harcamalar
-                            <ArrowRight size={18} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-            </Portal>
-        )}
-
-        {/* PROJE DETAY MODAL */}
-        {showProjectModal && selectedProject && (
-            <Portal>
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowProjectModal(false)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    {/* Modal Header */}
-                    <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white">
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-bold mb-2">{selectedProject.name}</h2>
-                                <div className="flex flex-wrap gap-3">
-                                    <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full text-sm font-semibold text-blue-700">
-                                        <Building2 size={16} />
-                                        {selectedProject.city}, {selectedProject.district}
-                                    </span>
-                                    <span className={`px-3 py-1 rounded-full font-semibold text-sm ${
-                                        selectedProject.status === 'Devam Ediyor' ? 'bg-emerald-100 text-emerald-700' :
-                                        selectedProject.status === 'Tamamlandı' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-amber-100 text-amber-700'
-                                    }`}>
-                                        {selectedProject.status}
-                                    </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowProjectModal(false)}
+                                        className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
+                                    >
+                                        ✕
+                                    </button>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setShowProjectModal(false)}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
-                            >
-                                ✕
-                            </button>
+
+                            {/* Modal Content */}
+                            <div className="p-6 overflow-y-auto max-h-[calc(85vh-220px)]">
+                                {/* Proje Bilgileri Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    {/* Başlangıç Tarihi */}
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                        <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Başlangıç Tarihi</p>
+                                        <p className="text-lg font-bold text-slate-800">
+                                            {new Date(selectedProject.start_date).toLocaleDateString('tr-TR')}
+                                        </p>
+                                    </div>
+
+                                    {/* Bütçe */}
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                        <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Bütçe</p>
+                                        <p className="text-lg font-bold text-primary-600">
+                                            {parseFloat(selectedProject.budget).toLocaleString('tr-TR')} ₺
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Adres Bilgisi */}
+                                {selectedProject.address && (
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                                        <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Adres</p>
+                                        <p className="text-sm text-slate-700 leading-relaxed">{selectedProject.address}</p>
+                                    </div>
+                                )}
+
+                                {/* Proje İstatistikleri */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                                        <p className="text-xs text-emerald-600 font-semibold mb-1">Durum</p>
+                                        <p className="text-2xl font-bold text-emerald-700">{selectedProject.status}</p>
+                                    </div>
+                                    <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                        <p className="text-xs text-blue-600 font-semibold mb-1">Konum</p>
+                                        <p className="text-sm font-bold text-blue-700">{selectedProject.city}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3">
+                                <button
+                                    onClick={() => setShowProjectModal(false)}
+                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
+                                >
+                                    Kapat
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowProjectModal(false)
+                                        navigate('/projects')
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold flex items-center justify-center gap-2"
+                                >
+                                    Tüm Projelere Git
+                                    <ArrowRight size={18} />
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </Portal>
+            )}
 
-                    {/* Modal Content */}
-                    <div className="p-6 overflow-y-auto max-h-[calc(85vh-220px)]">
-                        {/* Proje Bilgileri Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            {/* Başlangıç Tarihi */}
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Başlangıç Tarihi</p>
-                                <p className="text-lg font-bold text-slate-800">
-                                    {new Date(selectedProject.start_date).toLocaleDateString('tr-TR')}
-                                </p>
+            {/* ÇALIŞAN LİSTESİ MODAL */}
+            {showEmployeesModal && (
+                <Portal>
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowEmployeesModal(false)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl font-bold mb-1">Çalışan Listesi</h2>
+                                        <p className="text-emerald-100 text-sm">Tüm çalışanlar ve detayları</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowEmployeesModal(false)}
+                                        className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Bütçe */}
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Bütçe</p>
-                                <p className="text-lg font-bold text-primary-600">
-                                    {parseFloat(selectedProject.budget).toLocaleString('tr-TR')} ₺
-                                </p>
-                            </div>
-                        </div>
+                            {/* Modal Content */}
+                            <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
+                                {/* İstatistikler */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                    <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                                        <p className="text-xs text-emerald-600 mb-1 font-semibold uppercase">Toplam Çalışan</p>
+                                        <p className="text-2xl font-bold text-emerald-700">
+                                            {dashboardData.employees.total}
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                                        <p className="text-xs text-blue-600 mb-1 font-semibold uppercase">Aktif Çalışan</p>
+                                        <p className="text-2xl font-bold text-blue-700">
+                                            {dashboardData.employees.active}
+                                        </p>
+                                    </div>
+                                    <div className="bg-violet-50 p-4 rounded-xl border border-violet-200">
+                                        <p className="text-xs text-violet-600 mb-1 font-semibold uppercase">Pasif Çalışan</p>
+                                        <p className="text-2xl font-bold text-violet-700">
+                                            {dashboardData.employees.total - dashboardData.employees.active}
+                                        </p>
+                                    </div>
+                                </div>
 
-                        {/* Adres Bilgisi */}
-                        {selectedProject.address && (
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
-                                <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Adres</p>
-                                <p className="text-sm text-slate-700 leading-relaxed">{selectedProject.address}</p>
-                            </div>
-                        )}
-
-                        {/* Proje İstatistikleri */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                                <p className="text-xs text-emerald-600 font-semibold mb-1">Durum</p>
-                                <p className="text-2xl font-bold text-emerald-700">{selectedProject.status}</p>
-                            </div>
-                            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                                <p className="text-xs text-blue-600 font-semibold mb-1">Konum</p>
-                                <p className="text-sm font-bold text-blue-700">{selectedProject.city}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Modal Footer */}
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3">
-                        <button
-                            onClick={() => setShowProjectModal(false)}
-                            className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
-                        >
-                            Kapat
-                        </button>
-                        <button
-                            onClick={() => {
-                                setShowProjectModal(false)
-                                navigate('/projects')
-                            }}
-                            className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold flex items-center justify-center gap-2"
-                        >
-                            Tüm Projelere Git
-                            <ArrowRight size={18} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-            </Portal>
-        )}
-
-        {/* ÇALIŞAN LİSTESİ MODAL */}
-        {showEmployeesModal && (
-            <Portal>
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowEmployeesModal(false)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    {/* Modal Header */}
-                    <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-bold mb-1">Çalışan Listesi</h2>
-                                <p className="text-emerald-100 text-sm">Tüm çalışanlar ve detayları</p>
-                            </div>
-                            <button
-                                onClick={() => setShowEmployeesModal(false)}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Modal Content */}
-                    <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
-                        {/* İstatistikler */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                                <p className="text-xs text-emerald-600 mb-1 font-semibold uppercase">Toplam Çalışan</p>
-                                <p className="text-2xl font-bold text-emerald-700">
-                                    {dashboardData.employees.total}
-                                </p>
-                            </div>
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                                <p className="text-xs text-blue-600 mb-1 font-semibold uppercase">Aktif Çalışan</p>
-                                <p className="text-2xl font-bold text-blue-700">
-                                    {dashboardData.employees.active}
-                                </p>
-                            </div>
-                            <div className="bg-violet-50 p-4 rounded-xl border border-violet-200">
-                                <p className="text-xs text-violet-600 mb-1 font-semibold uppercase">Pasif Çalışan</p>
-                                <p className="text-2xl font-bold text-violet-700">
-                                    {dashboardData.employees.total - dashboardData.employees.active}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Tablo */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200">
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Çalışan</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Rol</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">İletişim</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Günlük Ücret</th>
-                                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Durum</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {dashboardData.employees.allEmployees.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="5" className="px-4 py-12 text-center text-slate-500">
-                                                    <Users className="mx-auto text-slate-300 mb-2" size={48} />
-                                                    Kayıtlı çalışan bulunamadı
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            dashboardData.employees.allEmployees.map((employee) => (
-                                                <tr key={employee.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
-                                                                {employee.first_name?.charAt(0)}{employee.last_name?.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-semibold text-slate-800">
-                                                                    {employee.first_name} {employee.last_name}
-                                                                </p>
-                                                                <p className="text-xs text-slate-500">
-                                                                    {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString('tr-TR') : '-'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-4">
-                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
-                                                            {employee.Role?.name || 'Rol Yok'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-4">
-                                                        <div className="text-sm">
-                                                            <p className="text-slate-700">{employee.phone || '-'}</p>
-                                                            <p className="text-xs text-slate-500">{employee.email || '-'}</p>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-4">
-                                                        <span className="font-semibold text-slate-800">
-                                                            {employee.daily_rate ? `${employee.daily_rate} ₺` : '-'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-4 text-center">
-                                                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                                                            employee.status === 'aktif' 
-                                                                ? 'bg-emerald-100 text-emerald-700' 
-                                                                : 'bg-red-100 text-red-700'
-                                                        }`}>
-                                                            {employee.status === 'aktif' ? 'Aktif' : 'Pasif'}
-                                                        </span>
-                                                    </td>
+                                {/* Tablo */}
+                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-200">
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Çalışan</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Rol</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">İletişim</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Günlük Ücret</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Durum</th>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {dashboardData.employees.allEmployees.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="5" className="px-4 py-12 text-center text-slate-500">
+                                                            <Users className="mx-auto text-slate-300 mb-2" size={48} />
+                                                            Kayıtlı çalışan bulunamadı
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    dashboardData.employees.allEmployees.map((employee) => (
+                                                        <tr key={employee.id} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-4 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
+                                                                        {employee.first_name?.charAt(0)}{employee.last_name?.charAt(0)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-semibold text-slate-800">
+                                                                            {employee.first_name} {employee.last_name}
+                                                                        </p>
+                                                                        <p className="text-xs text-slate-500">
+                                                                            {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString('tr-TR') : '-'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                                                                    {employee.Role?.name || 'Rol Yok'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <div className="text-sm">
+                                                                    <p className="text-slate-700">{employee.phone || '-'}</p>
+                                                                    <p className="text-xs text-slate-500">{employee.email || '-'}</p>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <span className="font-semibold text-slate-800">
+                                                                    {employee.daily_rate ? `${employee.daily_rate} ₺` : '-'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-center">
+                                                                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${employee.status === 'aktif'
+                                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                                    : 'bg-red-100 text-red-700'
+                                                                    }`}>
+                                                                    {employee.status === 'aktif' ? 'Aktif' : 'Pasif'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                                <button
+                                    onClick={() => setShowEmployeesModal(false)}
+                                    className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
+                                >
+                                    Kapat
+                                </button>
+                                <button
+                                    onClick={() => { setShowEmployeesModal(false); navigate('/team') }}
+                                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold flex items-center gap-2"
+                                >
+                                    Tüm Çalışanlara Git
+                                    <ArrowRight size={18} />
+                                </button>
                             </div>
                         </div>
                     </div>
-
-                    {/* Modal Footer */}
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                        <button
-                            onClick={() => setShowEmployeesModal(false)}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
-                        >
-                            Kapat
-                        </button>
-                        <button
-                            onClick={() => { setShowEmployeesModal(false); navigate('/team') }}
-                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold flex items-center gap-2"
-                        >
-                            Tüm Çalışanlara Git
-                            <ArrowRight size={18} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-            </Portal>
-        )}
-    </div>
+                </Portal>
+            )}
+        </div>
     )
 }

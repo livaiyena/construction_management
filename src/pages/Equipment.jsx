@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Truck, Plus, Search } from 'lucide-react'
-import { equipmentService } from '../services/modules'
+import { equipmentService, equipmentTypeService } from '../services/modules'
 import { useToast } from '../context/ToastContext'
+import { useNotification } from '../context/NotificationContext'
 
 export default function Equipment() {
     const [equipment, setEquipment] = useState([])
+    const [types, setTypes] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const { showToast } = useToast()
+    const { addNotification } = useNotification()
     const [formData, setFormData] = useState({
         name: '',
-        type: '',
+        type_id: '',
         serial_number: '',
         purchase_price: '',
         daily_rental_cost: '',
@@ -21,7 +24,21 @@ export default function Equipment() {
     })
 
     useEffect(() => {
-        fetchEquipment()
+        const loadData = async () => {
+            try {
+                const [equipmentData, typesData] = await Promise.all([
+                    equipmentService.getAll(),
+                    equipmentTypeService.getAll()
+                ])
+                setEquipment(equipmentData)
+                setTypes(typesData)
+            } catch (error) {
+                showToast('Veriler yüklenemedi', 'error')
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadData()
     }, [])
 
     const fetchEquipment = async () => {
@@ -29,9 +46,7 @@ export default function Equipment() {
             const data = await equipmentService.getAll()
             setEquipment(data)
         } catch (error) {
-            showToast('Ekipmanlar yüklenemedi', 'error')
-        } finally {
-            setLoading(false)
+            console.error(error)
         }
     }
 
@@ -40,18 +55,22 @@ export default function Equipment() {
         try {
             await equipmentService.create(formData)
             showToast('Ekipman eklendi', 'success')
+            addNotification('success', `Yeni ekipman eklendi: ${formData.name}`, 'INVENTORY')
             setShowModal(false)
-            setFormData({ name: '', type: '', serial_number: '', purchase_price: '', daily_rental_cost: '', condition: 'İyi', location: '', isAvailable: true })
+            setFormData({ name: '', type_id: '', serial_number: '', purchase_price: '', daily_rental_cost: '', condition: 'İyi', location: '', isAvailable: true })
             fetchEquipment()
         } catch (error) {
             showToast('Hata oluştu', 'error')
         }
     }
 
-    const filteredEquipment = equipment.filter(e =>
-        e.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.type?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredEquipment = equipment.filter(e => {
+        const typeName = types.find(t => t.id == e.type_id)?.name || e.type || ''
+        return (
+            e.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            typeName.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    })
 
     return (
         <div className="space-y-6">
@@ -100,38 +119,40 @@ export default function Equipment() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredEquipment.map(eq => (
-                                    <tr key={eq.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                                    <Truck className="text-blue-600" size={20} />
+                                filteredEquipment.map(eq => {
+                                    const typeName = types.find(t => t.id == eq.type_id)?.name || eq.type || '-'
+                                    return (
+                                        <tr key={eq.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                        <Truck className="text-blue-600" size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-slate-800">{eq.name}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold text-slate-800">{eq.name}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-slate-600">{eq.type || '-'}</td>
-                                        <td className="px-4 py-4 text-sm text-slate-600 font-mono">{eq.serial_number || '-'}</td>
-                                        <td className="px-4 py-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-                                                {eq.condition}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 text-right">
-                                            <span className="font-semibold text-slate-800">{eq.daily_rental_cost} ₺</span>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-slate-600">{eq.location || '-'}</td>
-                                        <td className="px-4 py-4 text-center">
-                                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                                                eq.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                                            }`}>
-                                                {eq.isAvailable ? 'Müsait' : 'Kullanımda'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-slate-600">{typeName}</td>
+                                            <td className="px-4 py-4 text-sm text-slate-600 font-mono">{eq.serial_number || '-'}</td>
+                                            <td className="px-4 py-4">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                                    {eq.condition}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 text-right">
+                                                <span className="font-semibold text-slate-800">{eq.daily_rental_cost} ₺</span>
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-slate-600">{eq.location || '-'}</td>
+                                            <td className="px-4 py-4 text-center">
+                                                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${eq.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                                                    }`}>
+                                                    {eq.isAvailable ? 'Müsait' : 'Kullanımda'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )
+                                })
                             )}
                         </tbody>
                     </table>
@@ -148,23 +169,26 @@ export default function Equipment() {
                                 placeholder="Ekipman Adı"
                                 className="input-field"
                                 value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
                             />
                             <div className="grid grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Tip"
+                                <select
                                     className="input-field"
-                                    value={formData.type}
-                                    onChange={(e) => setFormData({...formData, type: e.target.value})}
-                                />
+                                    value={formData.type_id}
+                                    onChange={(e) => setFormData({ ...formData, type_id: e.target.value })}
+                                >
+                                    <option value="">Tip Seçin</option>
+                                    {types.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
                                 <input
                                     type="text"
                                     placeholder="Seri No"
                                     className="input-field"
                                     value={formData.serial_number}
-                                    onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -173,14 +197,14 @@ export default function Equipment() {
                                     placeholder="Satın Alma Fiyatı"
                                     className="input-field"
                                     value={formData.purchase_price}
-                                    onChange={(e) => setFormData({...formData, purchase_price: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
                                 />
                                 <input
                                     type="number"
                                     placeholder="Günlük Kira"
                                     className="input-field"
                                     value={formData.daily_rental_cost}
-                                    onChange={(e) => setFormData({...formData, daily_rental_cost: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, daily_rental_cost: e.target.value })}
                                 />
                             </div>
                             <input
@@ -188,12 +212,12 @@ export default function Equipment() {
                                 placeholder="Konum"
                                 className="input-field"
                                 value={formData.location}
-                                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                             />
                             <select
                                 className="input-field"
                                 value={formData.condition}
-                                onChange={(e) => setFormData({...formData, condition: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                             >
                                 <option value="Mükemmel">Mükemmel</option>
                                 <option value="İyi">İyi</option>

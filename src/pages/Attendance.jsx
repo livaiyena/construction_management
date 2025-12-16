@@ -3,6 +3,7 @@ import { Calendar, PlusCircle, Edit2, Trash2, Search, Loader2, Users, Building2,
 import { useSearchParams } from 'react-router-dom'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
+import { useNotification } from '../context/NotificationContext'
 import Portal from '../components/Portal'
 
 export default function Attendance() {
@@ -18,7 +19,7 @@ export default function Attendance() {
     const [filterProject, setFilterProject] = useState('')
     const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '')
     const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0])
-    
+
     const [formData, setFormData] = useState({
         EmployeeId: '',
         ProjectId: '',
@@ -28,8 +29,9 @@ export default function Attendance() {
         overtime_hours: 0,
         notes: ''
     })
-    
+
     const { showToast } = useToast()
+    const { addNotification } = useNotification()
 
     useEffect(() => {
         fetchInitialData()
@@ -98,10 +100,12 @@ export default function Attendance() {
                 const res = await api.put(`/attendance/${editId}`, formData)
                 setAttendances(attendances.map(a => a.id === editId ? res.data : a))
                 showToast('Yoklama güncellendi.', 'success')
+                addNotification('success', `Yoklama güncellendi: ${new Date(formData.date).toLocaleDateString()} - ${formData.status}`, 'ATTENDANCE')
             } else {
                 const res = await api.post('/attendance', formData)
                 setAttendances([res.data, ...attendances])
                 showToast('Yoklama kaydı eklendi.', 'success')
+                addNotification('success', `Yeni yoklama eklendi: ${new Date(formData.date).toLocaleDateString()} - ${formData.status}`, 'ATTENDANCE')
             }
             setShowModal(false)
             resetForm()
@@ -120,6 +124,7 @@ export default function Attendance() {
             await api.delete(`/attendance/${id}`)
             setAttendances(attendances.filter(a => a.id !== id))
             showToast('Yoklama kaydı silindi.', 'success')
+            addNotification('warning', `Yoklama kaydı silindi (ID: ${id})`, 'ATTENDANCE')
         } catch (error) {
             console.error('Attendance delete error:', error)
             showToast('Kayıt silinirken hata oluştu.', 'error')
@@ -321,7 +326,7 @@ export default function Attendance() {
                         </tbody>
                     </table>
                 </div>
-                
+
                 {/* Pagination Info */}
                 {!isLoading && filteredAttendances.length > 0 && (
                     <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 text-sm text-slate-600">
@@ -333,149 +338,149 @@ export default function Attendance() {
             {/* Modal */}
             {showModal && (
                 <Portal>
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                            <h2 className="text-xl font-bold text-slate-800">
-                                {isEditing ? 'Yoklama Düzenle' : 'Yeni Yoklama Ekle'}
-                            </h2>
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                                <h2 className="text-xl font-bold text-slate-800">
+                                    {isEditing ? 'Yoklama Düzenle' : 'Yeni Yoklama Ekle'}
+                                </h2>
+                            </div>
+
+                            {/* Form */}
+                            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+                                <div className="p-6 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Çalışan *</label>
+                                            <select
+                                                value={formData.EmployeeId}
+                                                onChange={(e) => setFormData({ ...formData, EmployeeId: e.target.value })}
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                required
+                                            >
+                                                <option value="">Seçiniz</option>
+                                                {employees.map(e => (
+                                                    <option key={e.id} value={e.id}>
+                                                        {e.first_name} {e.last_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Proje *</label>
+                                            <select
+                                                value={formData.ProjectId}
+                                                onChange={(e) => setFormData({ ...formData, ProjectId: e.target.value })}
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                required
+                                            >
+                                                <option value="">Seçiniz</option>
+                                                {projects.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Tarih *</label>
+                                            <input
+                                                type="date"
+                                                value={formData.date}
+                                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Durum *</label>
+                                            <select
+                                                value={formData.status}
+                                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            >
+                                                <option value="Geldi">✓ Geldi</option>
+                                                <option value="Gelmedi">✗ Gelmedi</option>
+                                                <option value="İzinli">📅 İzinli</option>
+                                                <option value="Raporlu">📋 Raporlu</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Çalışma Saati</label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                min="0"
+                                                max="24"
+                                                value={formData.worked_hours}
+                                                onChange={(e) => setFormData({ ...formData, worked_hours: parseFloat(e.target.value) })}
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                placeholder="Örn: 8"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Fazla Mesai (saat)</label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                min="0"
+                                                max="24"
+                                                value={formData.overtime_hours}
+                                                onChange={(e) => setFormData({ ...formData, overtime_hours: parseFloat(e.target.value) })}
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                placeholder="Örn: 2"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Notlar</label>
+                                        <textarea
+                                            value={formData.notes}
+                                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                                            rows="2"
+                                            placeholder="İsteğe bağlı açıklama..."
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowModal(false); resetForm() }}
+                                        className="flex-1 px-4 py-2.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-all font-medium"
+                                        disabled={isSubmitting}
+                                    >
+                                        İptal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 text-sm rounded-lg transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 size={16} className="animate-spin" />
+                                                Kaydediliyor...
+                                            </>
+                                        ) : (
+                                            <>{isEditing ? 'Güncelle' : 'Kaydet'}</>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
-                        {/* Form */}
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Çalışan *</label>
-                                        <select
-                                            value={formData.EmployeeId}
-                                            onChange={(e) => setFormData({ ...formData, EmployeeId: e.target.value })}
-                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                            required
-                                        >
-                                            <option value="">Seçiniz</option>
-                                            {employees.map(e => (
-                                                <option key={e.id} value={e.id}>
-                                                    {e.first_name} {e.last_name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Proje *</label>
-                                        <select
-                                            value={formData.ProjectId}
-                                            onChange={(e) => setFormData({ ...formData, ProjectId: e.target.value })}
-                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                            required
-                                        >
-                                            <option value="">Seçiniz</option>
-                                            {projects.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Tarih *</label>
-                                        <input
-                                            type="date"
-                                            value={formData.date}
-                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Durum *</label>
-                                        <select
-                                            value={formData.status}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                        >
-                                            <option value="Geldi">✓ Geldi</option>
-                                            <option value="Gelmedi">✗ Gelmedi</option>
-                                            <option value="İzinli">📅 İzinli</option>
-                                            <option value="Raporlu">📋 Raporlu</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Çalışma Saati</label>
-                                        <input
-                                            type="number"
-                                            step="0.5"
-                                            min="0"
-                                            max="24"
-                                            value={formData.worked_hours}
-                                            onChange={(e) => setFormData({ ...formData, worked_hours: parseFloat(e.target.value) })}
-                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                            placeholder="Örn: 8"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Fazla Mesai (saat)</label>
-                                        <input
-                                            type="number"
-                                            step="0.5"
-                                            min="0"
-                                            max="24"
-                                            value={formData.overtime_hours}
-                                            onChange={(e) => setFormData({ ...formData, overtime_hours: parseFloat(e.target.value) })}
-                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                            placeholder="Örn: 2"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Notlar</label>
-                                    <textarea
-                                        value={formData.notes}
-                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                                        rows="2"
-                                        placeholder="İsteğe bağlı açıklama..."
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Footer */}
-                            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowModal(false); resetForm() }}
-                                    className="flex-1 px-4 py-2.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-all font-medium"
-                                    disabled={isSubmitting}
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 text-sm rounded-lg transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {isSubmitting ? (
-                                        <>
-                                            <Loader2 size={16} className="animate-spin" />
-                                            Kaydediliyor...
-                                        </>
-                                    ) : (
-                                        <>{isEditing ? 'Güncelle' : 'Kaydet'}</>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
                 </Portal>
             )}
         </div>

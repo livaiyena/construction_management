@@ -15,6 +15,8 @@ const ProjectEquipment = require('./ProjectEquipment');
 const Expense = require('./Expense');
 const Document = require('./Document');
 const AuditLog = require('./AuditLog');
+const MaterialCategory = require('./MaterialCategory');
+const EquipmentType = require('./EquipmentType');
 
 // ==================== İLİŞKİ TANIMLARI ====================
 
@@ -27,6 +29,13 @@ Employee.belongsTo(User, { foreignKey: 'userId' });
 
 User.hasMany(Role, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Role.belongsTo(User, { foreignKey: 'userId' });
+
+// Yeni Kategoriler için User ilişkisi
+User.hasMany(MaterialCategory, { foreignKey: 'userId', onDelete: 'CASCADE' });
+MaterialCategory.belongsTo(User, { foreignKey: 'userId' });
+
+User.hasMany(EquipmentType, { foreignKey: 'userId', onDelete: 'CASCADE' });
+EquipmentType.belongsTo(User, { foreignKey: 'userId' });
 
 // Project İlişkileri
 Project.hasMany(Employee, { foreignKey: 'ProjectId', onDelete: 'SET NULL' });
@@ -52,26 +61,34 @@ Attendance.belongsTo(Employee, { foreignKey: 'EmployeeId' });
 Supplier.hasMany(Material, { foreignKey: 'SupplierId', onDelete: 'SET NULL' });
 Material.belongsTo(Supplier, { foreignKey: 'SupplierId' });
 
+// Material - Category İlişkisi
+MaterialCategory.hasMany(Material, { foreignKey: 'MaterialCategoryId', onDelete: 'SET NULL' });
+Material.belongsTo(MaterialCategory, { foreignKey: 'MaterialCategoryId' });
+
+// Equipment - Type İlişkisi
+EquipmentType.hasMany(Equipment, { foreignKey: 'EquipmentTypeId', onDelete: 'SET NULL' });
+Equipment.belongsTo(EquipmentType, { foreignKey: 'EquipmentTypeId' });
+
 // Many-to-Many: Projects <-> Materials (through ProjectMaterial)
-Project.belongsToMany(Material, { 
-    through: ProjectMaterial, 
+Project.belongsToMany(Material, {
+    through: ProjectMaterial,
     foreignKey: 'ProjectId',
     otherKey: 'MaterialId'
 });
-Material.belongsToMany(Project, { 
-    through: ProjectMaterial, 
+Material.belongsToMany(Project, {
+    through: ProjectMaterial,
     foreignKey: 'MaterialId',
     otherKey: 'ProjectId'
 });
 
 // Many-to-Many: Projects <-> Equipment (through ProjectEquipment)
-Project.belongsToMany(Equipment, { 
-    through: ProjectEquipment, 
+Project.belongsToMany(Equipment, {
+    through: ProjectEquipment,
     foreignKey: 'ProjectId',
     otherKey: 'EquipmentId'
 });
-Equipment.belongsToMany(Project, { 
-    through: ProjectEquipment, 
+Equipment.belongsToMany(Project, {
+    through: ProjectEquipment,
     foreignKey: 'EquipmentId',
     otherKey: 'ProjectId'
 });
@@ -99,5 +116,7 @@ module.exports = {
     ProjectEquipment,
     Expense,
     Document,
-    AuditLog
+    AuditLog,
+    MaterialCategory,
+    EquipmentType
 };

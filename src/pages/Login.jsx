@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { HardHat, User, Lock, ArrowRight, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useNotification } from '../context/NotificationContext'
 
 export default function Login() {
     const [email, setEmail] = useState('')
@@ -11,6 +12,7 @@ export default function Login() {
 
     const { login } = useAuth()
     const { showToast } = useToast()
+    const { addNotification } = useNotification()
     const navigate = useNavigate()
 
     const handleSubmit = async (e) => {
@@ -26,9 +28,11 @@ export default function Login() {
             const result = await login(email, password)
             if (result.success) {
                 showToast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
+                addNotification('success', `Giriş yapıldı: ${email}`, 'AUTH')
                 navigate('/')
             } else {
                 showToast(result.message || 'Giriş başarısız.', 'error')
+                addNotification('error', `Başarısız giriş denemesi: ${email}`, 'AUTH')
             }
         } catch (error) {
             showToast('Bir hata oluştu.', 'error')

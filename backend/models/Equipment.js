@@ -11,9 +11,14 @@ const Equipment = sequelize.define('Equipment', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    type: {
-        type: DataTypes.STRING,
-        comment: 'Tip: Vinç, Ekskavatör, Kamyon, Elektrikli Alet, vs.'
+    EquipmentTypeId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'EquipmentTypes',
+            key: 'id'
+        },
+        comment: 'Ekipman Türü ID'
     },
     serial_number: {
         type: DataTypes.STRING,

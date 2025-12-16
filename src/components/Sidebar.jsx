@@ -1,11 +1,7 @@
-import { Home, Building2, Users, Briefcase, Calendar, DollarSign, FileText, Settings, LogOut, ChevronRight, Package } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { Home, Building2, Users, Calendar, DollarSign, FileText, Settings, ChevronRight, Package } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 
 export default function Sidebar() {
-    const { logout } = useAuth()
-    const navigate = useNavigate()
-
     const navItems = [
         { name: 'Genel Bakış', icon: Home, path: '/' },
         { name: 'Projeler', icon: Building2, path: '/projects' },
@@ -14,13 +10,8 @@ export default function Sidebar() {
         { name: 'Harcamalar', icon: DollarSign, path: '/expenses' },
         { name: 'Envanter', icon: Package, path: '/inventory' },
         { name: 'Raporlar', icon: FileText, path: '/reports' },
-        { name: 'Ayarlar', icon: Settings, path: '/settings' },
+        { name: 'Sistem Logları', icon: Settings, path: '/system-logs' },
     ]
-
-    const handleLogout = () => {
-        logout() // Token'ı siler ve statei sıfırlar
-        navigate('/login') // Giriş sayfasına atar
-    }
 
     return (
         <aside className="w-72 bg-dark-950 text-white flex flex-col h-full shadow-2xl relative overflow-hidden z-0">
@@ -66,10 +57,8 @@ export default function Sidebar() {
             </nav>
 
             <div className="p-4 border-t border-slate-800/50 relative z-10">
-                <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3.5 w-full text-slate-400 hover:text-red-400 hover:bg-red-950/20 rounded-xl transition-all duration-300 group">
-                    <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-                    <span className="font-medium">Oturumu Kapat</span>
-                </button>
+                {/* Footer Info or Version could go here */}
+
             </div>
         </aside>
     )

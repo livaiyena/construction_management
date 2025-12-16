@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FileText, TrendingUp, DollarSign, Users, Calendar, Building2, Loader2, Download, Code, X } from 'lucide-react'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
+import { useNotification } from '../context/NotificationContext'
 import Portal from '../components/Portal'
 
 export default function Reports() {
@@ -11,6 +12,7 @@ export default function Reports() {
     const [currentQuery, setCurrentQuery] = useState('')
     const [showQueryModal, setShowQueryModal] = useState(false)
     const { showToast } = useToast()
+    const { addNotification } = useNotification()
 
     const reports = [
         { id: 'project-expenses', name: 'Proje Bazlı Harcamalar', icon: Building2, sql: 'JOIN, SUM, GROUP BY' },
@@ -35,7 +37,7 @@ export default function Reports() {
         try {
             const response = await api.get(`/reports/${reportId}`)
             const result = response.data
-            
+
             // Backend artık { data: [...], query: "..." } formatında dönüyor
             if (result.data) {
                 setReportData(result.data)
@@ -70,6 +72,7 @@ export default function Reports() {
         link.download = `${activeReport}_${new Date().toISOString().split('T')[0]}.csv`
         link.click()
         showToast('Rapor indirildi!', 'success')
+        addNotification('success', `Rapor indirildi: ${activeReport}`, 'REPORT')
     }
 
     return (
@@ -110,11 +113,10 @@ export default function Reports() {
                         <button
                             key={report.id}
                             onClick={() => setActiveReport(report.id)}
-                            className={`w-full text-left p-3 rounded-xl transition-all border ${
-                                activeReport === report.id
+                            className={`w-full text-left p-3 rounded-xl transition-all border ${activeReport === report.id
                                     ? 'bg-primary-50 border-primary-200 text-primary-700'
                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
+                                }`}
                         >
                             <div className="flex items-center gap-2 mb-1">
                                 <report.icon size={16} />
@@ -202,7 +204,7 @@ export default function Reports() {
                 <Portal>
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowQueryModal(false)}></div>
-                        
+
                         <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
                             {/* Modal Header */}
                             <div className="bg-gradient-to-br from-slate-700 to-slate-900 p-6">
@@ -234,7 +236,7 @@ export default function Reports() {
                                         {currentQuery}
                                     </pre>
                                 </div>
-                                
+
                                 <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
                                     <h4 className="font-semibold text-blue-900 mb-2 text-sm">💡 SQL Teknikleri</h4>
                                     <p className="text-xs text-blue-800">

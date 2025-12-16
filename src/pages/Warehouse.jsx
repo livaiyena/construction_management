@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Package, Plus, Search, Edit, Trash2, AlertCircle } from 'lucide-react'
-import { materialService } from '../services/modules'
+import { materialService, categoryService } from '../services/modules'
 import { useToast } from '../context/ToastContext'
+import { useNotification } from '../context/NotificationContext'
 
 export default function Warehouse() {
     const [materials, setMaterials] = useState([])
+    const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const { showToast } = useToast()
+    const { addNotification } = useNotification()
     const [formData, setFormData] = useState({
         name: '',
-        category: '',
+        category_id: '',
         unit: '',
         stock_quantity: '',
         minimum_stock: '',
@@ -19,7 +22,21 @@ export default function Warehouse() {
     })
 
     useEffect(() => {
-        fetchMaterials()
+        const loadData = async () => {
+            try {
+                const [materialsData, categoriesData] = await Promise.all([
+                    materialService.getAll(),
+                    categoryService.getAll()
+                ])
+                setMaterials(materialsData)
+                setCategories(categoriesData)
+            } catch (error) {
+                showToast('Veriler yüklenemedi', 'error')
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadData()
     }, [])
 
     const fetchMaterials = async () => {
@@ -27,9 +44,7 @@ export default function Warehouse() {
             const data = await materialService.getAll()
             setMaterials(data)
         } catch (error) {
-            showToast('Malzemeler yüklenemedi', 'error')
-        } finally {
-            setLoading(false)
+            console.error(error)
         }
     }
 
@@ -38,18 +53,22 @@ export default function Warehouse() {
         try {
             await materialService.create(formData)
             showToast('Malzeme eklendi', 'success')
+            addNotification('success', `Yeni malzeme eklendi: ${formData.name}`, 'INVENTORY')
             setShowModal(false)
-            setFormData({ name: '', category: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+            setFormData({ name: '', category_id: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
             fetchMaterials()
         } catch (error) {
             showToast('Hata oluştu', 'error')
         }
     }
 
-    const filteredMaterials = materials.filter(m =>
-        m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.category?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredMaterials = materials.filter(m => {
+        const categoryName = categories.find(c => c.id == m.category_id)?.name || m.category || ''
+        return (
+            m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            categoryName.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    })
 
     return (
         <div className="space-y-6">
@@ -98,45 +117,48 @@ export default function Warehouse() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredMaterials.map(material => (
-                                    <tr key={material.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                                                    <Package className="text-primary-600" size={20} />
+                                filteredMaterials.map(material => {
+                                    const categoryName = categories.find(c => c.id == material.category_id)?.name || material.category || '-'
+                                    return (
+                                        <tr key={material.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                                                        <Package className="text-primary-600" size={20} />
+                                                    </div>
+                                                    <p className="font-semibold text-slate-800">{material.name}</p>
                                                 </div>
-                                                <p className="font-semibold text-slate-800">{material.name}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-                                                {material.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-slate-600">{material.unit}</td>
-                                        <td className="px-4 py-4 text-right">
-                                            <span className={`font-semibold ${material.stock_quantity < material.minimum_stock ? 'text-red-600' : 'text-slate-800'}`}>
-                                                {material.stock_quantity}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 text-right">
-                                            <span className="font-semibold text-slate-800">{material.unit_price} ₺</span>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-slate-600">{material.supplier || '-'}</td>
-                                        <td className="px-4 py-4 text-center">
-                                            {material.stock_quantity < material.minimum_stock ? (
-                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                                                    <AlertCircle size={14} />
-                                                    Düşük Stok
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                                    {categoryName}
                                                 </span>
-                                            ) : (
-                                                <span className="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                                                    Normal
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-slate-600">{material.unit}</td>
+                                            <td className="px-4 py-4 text-right">
+                                                <span className={`font-semibold ${material.stock_quantity < material.minimum_stock ? 'text-red-600' : 'text-slate-800'}`}>
+                                                    {material.stock_quantity}
                                                 </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-4 py-4 text-right">
+                                                <span className="font-semibold text-slate-800">{material.unit_price} ₺</span>
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-slate-600">{material.supplier || '-'}</td>
+                                            <td className="px-4 py-4 text-center">
+                                                {material.stock_quantity < material.minimum_stock ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                                        <AlertCircle size={14} />
+                                                        Düşük Stok
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                                                        Normal
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })
                             )}
                         </tbody>
                     </table>
@@ -153,30 +175,34 @@ export default function Warehouse() {
                                 placeholder="Malzeme Adı"
                                 className="input-field"
                                 value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
                             />
-                            <input
-                                type="text"
-                                placeholder="Kategori"
+                            <select
                                 className="input-field"
-                                value={formData.category}
-                                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                            />
+                                value={formData.category_id}
+                                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                                required
+                            >
+                                <option value="">Kategori Seçin</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </select>
                             <div className="grid grid-cols-2 gap-4">
                                 <input
                                     type="text"
                                     placeholder="Birim (kg, adet, m³)"
                                     className="input-field"
                                     value={formData.unit}
-                                    onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                                 />
                                 <input
                                     type="number"
                                     placeholder="Stok Miktarı"
                                     className="input-field"
                                     value={formData.stock_quantity}
-                                    onChange={(e) => setFormData({...formData, stock_quantity: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -185,14 +211,14 @@ export default function Warehouse() {
                                     placeholder="Min. Stok"
                                     className="input-field"
                                     value={formData.minimum_stock}
-                                    onChange={(e) => setFormData({...formData, minimum_stock: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, minimum_stock: e.target.value })}
                                 />
                                 <input
                                     type="number"
                                     placeholder="Birim Fiyat"
                                     className="input-field"
                                     value={formData.unit_price}
-                                    onChange={(e) => setFormData({...formData, unit_price: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                                 />
                             </div>
                             <div className="flex gap-3">

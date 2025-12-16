@@ -7,9 +7,15 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "db:sync": "node sync.js",
-    "db:seed": "node seed.js"
+    "db:seed": "node seed.js",
+    "db:seed:pro": "node seed-pro.js"
   },
-  "keywords": ["construction", "management", "api", "postgresql"],
+  "keywords": [
+    "construction",
+    "management",
+    "api",
+    "postgresql"
+  ],
   "author": "Dogukan",
   "license": "MIT",
   "type": "commonjs",

@@ -1,9 +1,0 @@
-PORT=5000
-JWT_SECRET=cb04fdb26560154f6384be83da823b7d93733054e7b465627ea05773161465b676182d854e5fb3c21538603a1db43ddb8d3aa394e89fa4b86253e9fb934c27fc
-
-# SQL Server Bilgileri
-DB_SERVER=localhost
-DB_NAME=insaatyonetim
-# Node.js genelde SQL Auth sever. SSMS'den 'sa' kullanıcısını aktif etmeniz gerekebilir.
-DB_USER=sa
-DB_PASS=insaatdb

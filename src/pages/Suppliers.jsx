@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Building, Plus, Search, Star } from 'lucide-react'
 import { supplierService } from '../services/modules'
 import { useToast } from '../context/ToastContext'
+import { useNotification } from '../context/NotificationContext'
 
 export default function Suppliers() {
     const [suppliers, setSuppliers] = useState([])
@@ -9,6 +10,7 @@ export default function Suppliers() {
     const [showModal, setShowModal] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const { showToast } = useToast()
+    const { addNotification } = useNotification()
     const [formData, setFormData] = useState({
         name: '',
         contact_person: '',
@@ -41,6 +43,7 @@ export default function Suppliers() {
         try {
             await supplierService.create(formData)
             showToast('Tedarikçi eklendi', 'success')
+            addNotification('success', `Yeni tedarikçi eklendi: ${formData.name}`, 'INVENTORY')
             setShowModal(false)
             setFormData({ name: '', contact_person: '', phone: '', email: '', address: '', tax_number: '', payment_terms: '', rating: 3, isActive: true })
             fetchSuppliers()
@@ -153,7 +156,7 @@ export default function Suppliers() {
                                 placeholder="Firma Adı"
                                 className="input-field"
                                 value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
                             />
                             <div className="grid grid-cols-2 gap-4">
@@ -162,14 +165,14 @@ export default function Suppliers() {
                                     placeholder="İrtibat Kişisi"
                                     className="input-field"
                                     value={formData.contact_person}
-                                    onChange={(e) => setFormData({...formData, contact_person: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                                 />
                                 <input
                                     type="tel"
                                     placeholder="Telefon"
                                     className="input-field"
                                     value={formData.phone}
-                                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 />
                             </div>
                             <input
@@ -177,14 +180,14 @@ export default function Suppliers() {
                                 placeholder="E-posta"
                                 className="input-field"
                                 value={formData.email}
-                                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             />
                             <textarea
                                 placeholder="Adres"
                                 className="input-field resize-none"
                                 rows="2"
                                 value={formData.address}
-                                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                             />
                             <div className="grid grid-cols-2 gap-4">
                                 <input
@@ -192,14 +195,14 @@ export default function Suppliers() {
                                     placeholder="Vergi No"
                                     className="input-field"
                                     value={formData.tax_number}
-                                    onChange={(e) => setFormData({...formData, tax_number: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })}
                                 />
                                 <input
                                     type="text"
                                     placeholder="Ödeme Şartları"
                                     className="input-field"
                                     value={formData.payment_terms}
-                                    onChange={(e) => setFormData({...formData, payment_terms: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                                 />
                             </div>
                             <div>
@@ -209,7 +212,7 @@ export default function Suppliers() {
                                         <button
                                             key={rating}
                                             type="button"
-                                            onClick={() => setFormData({...formData, rating})}
+                                            onClick={() => setFormData({ ...formData, rating })}
                                             className="p-2"
                                         >
                                             <Star

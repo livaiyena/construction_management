@@ -11,9 +11,14 @@ const Material = sequelize.define('Material', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    category: {
-        type: DataTypes.STRING,
-        comment: 'Kategori: Çimento, Demir, Kum, Boya, vs.'
+    MaterialCategoryId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'MaterialCategories',
+            key: 'id'
+        },
+        comment: 'Kategori ID'
     },
     unit: {
         type: DataTypes.STRING,
