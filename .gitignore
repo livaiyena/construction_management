@@ -2,8 +2,9 @@ node_modules/
 /backend/node_modules
 /frontend/node_modules
 
-# Sadece local ve test .env dosyaları ignore ediliyor
-# Backend/.env paylaşımlı - herkes aynı veritabanını kullanıyor
+# Environment variables
+.env
+backend/.env
 .env.local
 .env.development.local
 .env.test.local
