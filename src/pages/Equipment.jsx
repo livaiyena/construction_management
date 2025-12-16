@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Truck, Plus, Search } from 'lucide-react'
+import { Truck, Plus, Search, Edit, Trash2 } from 'lucide-react'
 import { equipmentService, equipmentTypeService } from '../services/modules'
 import { useToast } from '../context/ToastContext'
 import { useNotification } from '../context/NotificationContext'
@@ -9,6 +9,7 @@ export default function Equipment() {
     const [types, setTypes] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
+    const [editingId, setEditingId] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
     const { showToast } = useToast()
     const { addNotification } = useNotification()
@@ -53,19 +54,54 @@ export default function Equipment() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            await equipmentService.create(formData)
-            showToast('Ekipman eklendi', 'success')
-            addNotification('success', `Yeni ekipman eklendi: ${formData.name}`, 'INVENTORY')
+            if (editingId) {
+                await equipmentService.update(editingId, formData)
+                showToast('Ekipman güncellendi', 'success')
+                addNotification('info', `Ekipman güncellendi: ${formData.name}`, 'INVENTORY')
+            } else {
+                await equipmentService.create(formData)
+                showToast('Ekipman eklendi', 'success')
+                addNotification('success', `Yeni ekipman eklendi: ${formData.name}`, 'INVENTORY')
+            }
             setShowModal(false)
-            setFormData({ name: '', type_id: '', serial_number: '', purchase_price: '', daily_rental_cost: '', condition: 'İyi', location: '', isAvailable: true })
+            setFormData({ name: '', EquipmentTypeId: '', serial_number: '', purchase_price: '', daily_rental_cost: '', condition: 'İyi', location: '', isAvailable: true })
+            setEditingId(null)
             fetchEquipment()
         } catch (error) {
             showToast('Hata oluştu', 'error')
         }
     }
 
+    const handleEdit = (eq) => {
+        setFormData({
+            name: eq.name,
+            EquipmentTypeId: eq.EquipmentTypeId,
+            serial_number: eq.serial_number,
+            purchase_price: eq.purchase_price,
+            daily_rental_cost: eq.daily_rental_cost,
+            condition: eq.condition,
+            location: eq.location,
+            isAvailable: eq.isAvailable
+        })
+        setEditingId(eq.id)
+        setShowModal(true)
+    }
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Bu ekipmanı silmek istediğinize emin misiniz?')) {
+            try {
+                await equipmentService.delete(id)
+                showToast('Ekipman silindi', 'success')
+                addNotification('warning', 'Ekipman silindi', 'INVENTORY')
+                fetchEquipment()
+            } catch (error) {
+                showToast('Silme işlemi başarısız', 'error')
+            }
+        }
+    }
+
     const filteredEquipment = equipment.filter(e => {
-        const typeName = types.find(t => t.id == e.type_id)?.name || e.type || ''
+        const typeName = types.find(t => t.id == e.EquipmentTypeId)?.name || e.type || ''
         return (
             e.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             typeName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -76,7 +112,11 @@ export default function Equipment() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-slate-800">Ekipman Yönetimi</h2>
-                <button onClick={() => setShowModal(true)} className="btn-primary">
+                <button onClick={() => {
+                    setEditingId(null)
+                    setFormData({ name: '', EquipmentTypeId: '', serial_number: '', purchase_price: '', daily_rental_cost: '', condition: 'İyi', location: '', isAvailable: true })
+                    setShowModal(true)
+                }} className="btn-primary">
                     <Plus size={20} /> Yeni Ekipman
                 </button>
             </div>
@@ -104,6 +144,7 @@ export default function Equipment() {
                                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Günlük Kira</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Konum</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Müsaitlik</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -120,7 +161,7 @@ export default function Equipment() {
                                 </tr>
                             ) : (
                                 filteredEquipment.map(eq => {
-                                    const typeName = types.find(t => t.id == eq.type_id)?.name || eq.type || '-'
+                                    const typeName = types.find(t => t.id == eq.EquipmentTypeId)?.name || eq.type || '-'
                                     return (
                                         <tr key={eq.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-4 py-4">
@@ -150,6 +191,24 @@ export default function Equipment() {
                                                     {eq.isAvailable ? 'Müsait' : 'Kullanımda'}
                                                 </span>
                                             </td>
+                                            <td className="px-4 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(eq)}
+                                                        className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Düzenle"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(eq.id)}
+                                                        className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Sil"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     )
                                 })
@@ -162,7 +221,7 @@ export default function Equipment() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
                     <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4">Yeni Ekipman Ekle</h3>
+                        <h3 className="text-xl font-bold mb-4">{editingId ? 'Ekipman Düzenle' : 'Yeni Ekipman Ekle'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input
                                 type="text"
@@ -175,8 +234,8 @@ export default function Equipment() {
                             <div className="grid grid-cols-2 gap-4">
                                 <select
                                     className="input-field"
-                                    value={formData.type_id}
-                                    onChange={(e) => setFormData({ ...formData, type_id: e.target.value })}
+                                    value={formData.EquipmentTypeId}
+                                    onChange={(e) => setFormData({ ...formData, EquipmentTypeId: e.target.value })}
                                 >
                                     <option value="">Tip Seçin</option>
                                     {types.map(t => (

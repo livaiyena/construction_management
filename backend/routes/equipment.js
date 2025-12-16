@@ -89,7 +89,7 @@ router.post('/:id/assign', auth, async (req, res) => {
     try {
         const { projectId, quantity, notes } = req.body;
         const equipment = await Equipment.findByPk(req.params.id);
-        
+
         if (!equipment) {
             return res.status(404).json({ message: 'Ekipman bulunamadı' });
         }
@@ -110,6 +110,9 @@ router.post('/:id/assign', auth, async (req, res) => {
 
         // Ekipmanı kullanımda olarak işaretle
         await equipment.update({ isAvailable: false, location: `Proje: ${project.name}` });
+
+        // Audit Log
+        await AuditLogger.logEquipment('ASSIGN', req.user.id, req.user.name || 'Admin', equipment, req, { projectId, projectName: project.name, quantity, notes });
 
         res.json({ message: 'Ekipman projeye atandı', equipment });
     } catch (err) {

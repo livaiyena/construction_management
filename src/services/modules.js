@@ -24,6 +24,14 @@ export const materialService = {
         const response = await api.post('/materials', data);
         return response.data;
     },
+    update: async (id, data) => {
+        const response = await api.put(`/materials/${id}`, data);
+        return response.data;
+    },
+    delete: async (id) => {
+        const response = await api.delete(`/materials/${id}`);
+        return response.data;
+    },
     getTransactions: async (id) => {
         const response = await api.get(`/materials/${id}/transactions`);
         return response.data;

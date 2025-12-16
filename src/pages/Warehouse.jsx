@@ -9,6 +9,7 @@ export default function Warehouse() {
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
+    const [editingId, setEditingId] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
     const { showToast } = useToast()
     const { addNotification } = useNotification()
@@ -51,19 +52,52 @@ export default function Warehouse() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            await materialService.create(formData)
-            showToast('Malzeme eklendi', 'success')
-            addNotification('success', `Yeni malzeme eklendi: ${formData.name}`, 'INVENTORY')
+            if (editingId) {
+                await materialService.update(editingId, formData)
+                showToast('Malzeme güncellendi', 'success')
+                addNotification('info', `Malzeme güncellendi: ${formData.name}`, 'INVENTORY')
+            } else {
+                await materialService.create(formData)
+                showToast('Malzeme eklendi', 'success')
+                addNotification('success', `Yeni malzeme eklendi: ${formData.name}`, 'INVENTORY')
+            }
             setShowModal(false)
-            setFormData({ name: '', category_id: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+            setFormData({ name: '', MaterialCategoryId: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+            setEditingId(null)
             fetchMaterials()
         } catch (error) {
             showToast('Hata oluştu', 'error')
         }
     }
 
+    const handleEdit = (material) => {
+        setFormData({
+            name: material.name,
+            MaterialCategoryId: material.MaterialCategoryId,
+            unit: material.unit,
+            stock_quantity: material.stock_quantity,
+            minimum_stock: material.minimum_stock,
+            unit_price: material.unit_price
+        })
+        setEditingId(material.id)
+        setShowModal(true)
+    }
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Bu malzemeyi silmek istediğinize emin misiniz?')) {
+            try {
+                await materialService.delete(id)
+                showToast('Malzeme silindi', 'success')
+                addNotification('warning', 'Malzeme silindi', 'INVENTORY')
+                fetchMaterials()
+            } catch (error) {
+                showToast('Silme işlemi başarısız', 'error')
+            }
+        }
+    }
+
     const filteredMaterials = materials.filter(m => {
-        const categoryName = categories.find(c => c.id == m.category_id)?.name || m.category || ''
+        const categoryName = categories.find(c => c.id == m.MaterialCategoryId)?.name || m.category || ''
         return (
             m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             categoryName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -74,7 +108,11 @@ export default function Warehouse() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-slate-800">Depo & Stok Yönetimi</h2>
-                <button onClick={() => setShowModal(true)} className="btn-primary">
+                <button onClick={() => {
+                    setEditingId(null)
+                    setFormData({ name: '', MaterialCategoryId: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+                    setShowModal(true)
+                }} className="btn-primary">
                     <Plus size={20} /> Yeni Malzeme
                 </button>
             </div>
@@ -102,6 +140,7 @@ export default function Warehouse() {
                                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Birim Fiyat</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Tedarikçi</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Durum</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -118,7 +157,7 @@ export default function Warehouse() {
                                 </tr>
                             ) : (
                                 filteredMaterials.map(material => {
-                                    const categoryName = categories.find(c => c.id == material.category_id)?.name || material.category || '-'
+                                    const categoryName = categories.find(c => c.id == material.MaterialCategoryId)?.name || material.category || '-'
                                     return (
                                         <tr key={material.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-4 py-4">
@@ -156,6 +195,24 @@ export default function Warehouse() {
                                                     </span>
                                                 )}
                                             </td>
+                                            <td className="px-4 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(material)}
+                                                        className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Düzenle"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(material.id)}
+                                                        className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Sil"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     )
                                 })
@@ -168,7 +225,7 @@ export default function Warehouse() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
                     <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4">Yeni Malzeme Ekle</h3>
+                        <h3 className="text-xl font-bold mb-4">{editingId ? 'Malzeme Düzenle' : 'Yeni Malzeme Ekle'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input
                                 type="text"
@@ -180,8 +237,8 @@ export default function Warehouse() {
                             />
                             <select
                                 className="input-field"
-                                value={formData.category_id}
-                                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                                value={formData.MaterialCategoryId}
+                                onChange={(e) => setFormData({ ...formData, MaterialCategoryId: e.target.value })}
                                 required
                             >
                                 <option value="">Kategori Seçin</option>
