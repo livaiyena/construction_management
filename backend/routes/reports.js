@@ -23,7 +23,7 @@ router.get('/project-expenses', async (req, res) => {
             HAVING COUNT(e.id) > 0
             ORDER BY total_expenses DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -49,7 +49,7 @@ router.get('/expense-by-category', async (req, res) => {
             HAVING SUM(amount) > 1000
             ORDER BY total_amount DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -78,7 +78,7 @@ router.get('/employee-attendance-stats', async (req, res) => {
             HAVING COUNT(a.id) > 0
             ORDER BY days_present DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -113,10 +113,10 @@ router.get('/project-details/:projectId', async (req, res) => {
             WHERE p.id = :projectId
             GROUP BY p.id, p.name, p.city, p.district, p.address, p.budget, p.start_date, p.end_date, p.status
         `;
-        
-        const results = await sequelize.query(query, { 
+
+        const results = await sequelize.query(query, {
             replacements: { projectId },
-            type: QueryTypes.SELECT 
+            type: QueryTypes.SELECT
         });
         res.json({ data: results[0] || {}, query: query.trim().replace(':projectId', projectId) });
     } catch (error) {
@@ -143,7 +143,7 @@ router.get('/monthly-expenses', async (req, res) => {
             GROUP BY TO_CHAR(expense_date, 'YYYY-MM'), TO_CHAR(expense_date, 'Month YYYY')
             ORDER BY month DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -177,7 +177,7 @@ router.get('/top-active-employees', async (req, res) => {
             ORDER BY attendance_rate DESC
             LIMIT 10
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -202,7 +202,7 @@ router.get('/role-salary-analysis', async (req, res) => {
             GROUP BY r.id, r.name, r.default_daily_rate
             ORDER BY total_monthly_cost DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -238,7 +238,7 @@ router.get('/pending-expenses', async (req, res) => {
             ORDER BY days_pending DESC
             LIMIT 20
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -271,7 +271,7 @@ router.get('/project-performance', async (req, res) => {
             GROUP BY p.id, p.name, p.status, p.budget
             ORDER BY total_expenses DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -301,7 +301,7 @@ router.get('/weekly-attendance', async (req, res) => {
             GROUP BY TO_CHAR(date, 'IYYY-IW')
             ORDER BY week DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -329,7 +329,7 @@ router.get('/most-expensive-projects', async (req, res) => {
             ORDER BY total_spent DESC
             LIMIT 5
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {
@@ -363,7 +363,7 @@ router.get('/employee-cost-report', async (req, res) => {
             HAVING COUNT(CASE WHEN a.status = 'Geldi' THEN 1 END) > 0
             ORDER BY total_cost DESC
         `;
-        
+
         const results = await sequelize.query(query, { type: QueryTypes.SELECT });
         res.json({ data: results, query: query.trim() });
     } catch (error) {

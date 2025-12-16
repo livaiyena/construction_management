@@ -114,8 +114,8 @@ export default function Reports() {
                             key={report.id}
                             onClick={() => setActiveReport(report.id)}
                             className={`w-full text-left p-3 rounded-xl transition-all border ${activeReport === report.id
-                                    ? 'bg-primary-50 border-primary-200 text-primary-700'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                ? 'bg-primary-50 border-primary-200 text-primary-700'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                         >
                             <div className="flex items-center gap-2 mb-1">
