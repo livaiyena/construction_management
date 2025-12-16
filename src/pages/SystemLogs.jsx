@@ -1,37 +1,78 @@
-import { useState, useMemo } from 'react'
-import { Shield } from 'lucide-react'
-import { useNotification } from '../context/NotificationContext'
+import { useState, useEffect, useMemo } from 'react'
+import { Shield, RefreshCw, Download } from 'lucide-react'
+import api from '../services/api'
 import LogStats from '../components/settings/LogStats'
 import LogFilters from '../components/settings/LogFilters'
 import LogTable from '../components/settings/LogTable'
+import { useToast } from '../context/ToastContext'
 
 export default function SystemLogs() {
-    const { notifications } = useNotification()
+    const [logs, setLogs] = useState([])
+    const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState({
         category: '',
         type: ''
     })
+    const { showToast } = useToast()
 
-    // Base logs (excluding AUTH as they are in Profile)
-    const systemLogs = useMemo(() => {
-        return notifications.filter(log => log.category !== 'AUTH')
-    }, [notifications])
+    const fetchLogs = async () => {
+        setLoading(true)
+        try {
+            const res = await api.get('/audit')
+            // Backend'den gelen veri yapısı: { logs: [], pagination: {} }
+            // Ancak api/audit endpoint'i şu an direkt array mi dönüyor yoksa obje mi kontrol etmeli.
+            // routes/audit.js'ye göre: res.json({ logs, pagination }) dönüyor.
+            if (res.data && res.data.logs) {
+                const mappedLogs = res.data.logs.map(log => ({
+                    ...log,
+                    timestamp: log.createdAt,
+                    category: log.entity,
+                    message: log.description,
+                    type: log.status
+                }))
+                setLogs(mappedLogs)
+            } else if (Array.isArray(res.data)) {
+                // Fallback for array response
+                const mappedLogs = res.data.map(log => ({
+                    ...log,
+                    timestamp: log.createdAt,
+                    category: log.entity,
+                    message: log.description,
+                    type: log.status
+                }))
+                setLogs(mappedLogs)
+            }
+        } catch (error) {
+            console.error('Logs fetch error:', error)
+            showToast('Loglar yüklenirken hata oluştu', 'error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchLogs()
+    }, [])
 
     // Filter logs based on selection
     const filteredLogs = useMemo(() => {
-        let result = [...systemLogs]
+        let result = [...logs]
 
         if (filters.category) {
-            result = result.filter(log => log.category === filters.category)
+            // Backend 'entity' kullanıyor, frontend filtresi 'category' gönderiyor. Uyumluluk lazım.
+            // LogFilters componentine bakılmalı. Muhtemelen orada entity seçiliyor.
+            result = result.filter(log => log.entity === filters.category)
         }
 
         if (filters.type) {
-            result = result.filter(log => log.type === filters.type)
+            // Backend 'action' kullanıyor (CREATE, UPDATE vs), frontend 'type' (success/error vs) mı?
+            // AuditLog modelinde 'status' ve 'action' var.
+            // Genelde kullanıcı işlem tipini filtrelemek ister.
+            result = result.filter(log => log.action === filters.type || log.status === filters.type)
         }
 
-        // Sort by newest first
-        return result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    }, [systemLogs, filters])
+        return result
+    }, [logs, filters])
 
     return (
         <div className="space-y-6 animate-in fade-in">
@@ -39,16 +80,25 @@ export default function SystemLogs() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800">Sistem Denetim Kayıtları</h1>
-                    <p className="text-slate-500">Tüm sistem işlemlerinin detaylı kaydı ve istatistikleri.</p>
+                    <p className="text-slate-500">Tüm sistem işlemlerinin detaylı veritabanı logları.</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-lg">
-                    <Shield size={20} />
-                    <span className="font-medium">Sistem İzleme Aktif</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={fetchLogs}
+                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="Yenile"
+                    >
+                        <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+                    </button>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-lg">
+                        <Shield size={20} />
+                        <span className="font-medium">Sistem İzleme Aktif</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Stats Module */}
-            <LogStats logs={systemLogs} />
+            {/* Stats Module - Backend verisine göre adapte edilecek */}
+            <LogStats logs={logs} />
 
             {/* Filters Module */}
             <LogFilters
@@ -58,7 +108,7 @@ export default function SystemLogs() {
             />
 
             {/* Logs Table Module */}
-            <LogTable logs={filteredLogs} />
+            <LogTable logs={filteredLogs} loading={loading} />
         </div>
     )
 }
