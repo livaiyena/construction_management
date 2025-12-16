@@ -60,6 +60,13 @@ const Expense = sequelize.define('Expense', {
         type: DataTypes.INTEGER,
         allowNull: false
     }
+}, {
+    indexes: [
+        { fields: ['category'] },
+        { fields: ['expense_date'] },
+        { fields: ['status'] },
+        { fields: ['ProjectId'] }
+    ]
 });
 
 module.exports = Expense;

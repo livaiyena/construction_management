@@ -26,11 +26,17 @@ const Employee = sequelize.define('Employee', {
         allowNull: true,
         references: { model: Project, key: 'id' }
     },
-    
+
     phone: { type: DataTypes.STRING },
-    daily_rate: { type: DataTypes.FLOAT, defaultValue: 0 },
+    daily_rate: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
     userId: { type: DataTypes.INTEGER, allowNull: false }
+}, {
+    indexes: [
+        { fields: ['status'] },
+        { fields: ['isActive'] },
+        { fields: ['first_name', 'last_name'] }
+    ]
 });
 
 module.exports = Employee;

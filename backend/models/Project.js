@@ -24,7 +24,7 @@ const Project = sequelize.define('Project', {
         allowNull: true
     },
     budget: {
-        type: DataTypes.FLOAT, // Para birimi için FLOAT veya DECIMAL
+        type: DataTypes.DECIMAL(15, 2), // Para birimi için DECIMAL (kuruş hassasiyeti)
         defaultValue: 0
     },
     status: {
@@ -35,10 +35,16 @@ const Project = sequelize.define('Project', {
         type: DataTypes.DATEONLY, // Sadece tarih (saat yok)
         allowNull: false
     },
-	userId: {
+    userId: {
         type: DataTypes.INTEGER,
         allowNull: false
     }
+}, {
+    indexes: [
+        { fields: ['status'] },
+        { fields: ['start_date'] },
+        { fields: ['city'] }
+    ]
 });
 
 module.exports = Project;

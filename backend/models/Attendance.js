@@ -59,7 +59,10 @@ const Attendance = sequelize.define('Attendance', {
         {
             unique: true,
             fields: ['EmployeeId', 'ProjectId', 'date']
-        }
+        },
+        { fields: ['status'] },
+        { fields: ['date'] },
+        { fields: ['ProjectId'] }
     ]
 });
 
