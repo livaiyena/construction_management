@@ -9,7 +9,8 @@ module.exports = function (req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded.user; // <--- BU SATIR ÇOK ÖNEMLİ
+        // Token direkt { id, email, name } içeriyor, user objesi içinde değil
+        req.user = decoded;
         next();
     } catch (err) {
         res.status(401).json({ message: 'Token geçersiz.' });

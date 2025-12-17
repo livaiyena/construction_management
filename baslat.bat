@@ -38,14 +38,14 @@ echo Sunucularin baslamasi bekleniyor (8 saniye)...
 timeout /t 8 >nul
 
 echo Tarayici aciliyor...
-start http://localhost:5173
+start http://localhost:4000
 
 echo.
 echo ===================================================
 echo         SISTEM BASARIYLA BASLATILDI!
 echo.
 echo   Backend API: http://localhost:5000
-echo   Frontend UI: http://localhost:5173
+echo   Frontend UI: http://localhost:4000
 echo.
 echo   Pencereleri kapatmayin!
 echo ===================================================

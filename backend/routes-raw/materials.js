@@ -21,12 +21,13 @@ router.get('/', auth, async (req, res) => {
         const materials = result.rows.map(row => ({
             id: row.id,
             name: row.name,
-            description: row.description,
             unit: row.unit,
             unit_price: row.unit_price,
             stock_quantity: row.stock_quantity,
-            CategoryId: row.CategoryId,
+            minimum_stock: row.minimum_stock,
+            MaterialCategoryId: row.MaterialCategoryId,
             SupplierId: row.SupplierId,
+            description: row.description,
             userId: row.userId,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
@@ -45,23 +46,24 @@ router.get('/', auth, async (req, res) => {
 // POST /api/materials - Yeni malzeme ekle
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, description, unit, unit_price, stock_quantity, CategoryId, SupplierId } = req.body;
+        const { name, unit, unit_price, stock_quantity, minimum_stock, MaterialCategoryId, SupplierId, description } = req.body;
         
         const insertQuery = `
             INSERT INTO "Materials" 
-            ("name", "description", "unit", "unit_price", "stock_quantity", "CategoryId", "SupplierId", "userId", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("name", "MaterialCategoryId", "unit", "unit_price", "stock_quantity", "minimum_stock", "SupplierId", "description", "userId", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
             RETURNING *
         `;
         
         const result = await query(insertQuery, [
             name,
-            description || null,
+            MaterialCategoryId || null,
             unit || 'adet',
             unit_price || 0,
             stock_quantity || 0,
-            CategoryId || null,
+            minimum_stock || 0,
             SupplierId || null,
+            description || null,
             req.user.id
         ]);
 
@@ -76,7 +78,7 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description, unit, unit_price, stock_quantity, CategoryId, SupplierId } = req.body;
+        const { name, unit, unit_price, stock_quantity, minimum_stock, MaterialCategoryId, SupplierId, description } = req.body;
 
         const checkResult = await query('SELECT * FROM "Materials" WHERE "id" = $1', [id]);
 
@@ -88,20 +90,21 @@ router.put('/:id', auth, async (req, res) => {
 
         const updateQuery = `
             UPDATE "Materials" 
-            SET "name" = $1, "description" = $2, "unit" = $3, "unit_price" = $4,
-                "stock_quantity" = $5, "CategoryId" = $6, "SupplierId" = $7, "updatedAt" = NOW()
-            WHERE "id" = $8
+            SET "name" = $1, "MaterialCategoryId" = $2, "unit" = $3, "unit_price" = $4,
+                "stock_quantity" = $5, "minimum_stock" = $6, "SupplierId" = $7, "description" = $8, "updatedAt" = NOW()
+            WHERE "id" = $9
             RETURNING *
         `;
 
         const result = await query(updateQuery, [
             name || oldMaterial.name,
-            description !== undefined ? description : oldMaterial.description,
+            MaterialCategoryId !== undefined ? MaterialCategoryId : oldMaterial.MaterialCategoryId,
             unit || oldMaterial.unit,
             unit_price !== undefined ? unit_price : oldMaterial.unit_price,
             stock_quantity !== undefined ? stock_quantity : oldMaterial.stock_quantity,
-            CategoryId !== undefined ? CategoryId : oldMaterial.CategoryId,
+            minimum_stock !== undefined ? minimum_stock : oldMaterial.minimum_stock,
             SupplierId !== undefined ? SupplierId : oldMaterial.SupplierId,
+            description !== undefined ? description : oldMaterial.description,
             id
         ]);
 

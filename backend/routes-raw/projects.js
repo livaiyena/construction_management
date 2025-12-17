@@ -19,23 +19,24 @@ router.get('/', auth, async (req, res) => {
 // POST /api/projects - Yeni proje oluştur
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, description, location, budget, startDate, endDate, status } = req.body;
+        const { name, city, district, address, budget, start_date, end_date, status } = req.body;
         
         const insertQuery = `
             INSERT INTO "Projects" 
-            ("name", "description", "location", "budget", "startDate", "endDate", "status", "userId", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("name", "city", "district", "address", "budget", "start_date", "end_date", "status", "userId", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
             RETURNING *
         `;
         
         const result = await query(insertQuery, [
             name,
-            description || null,
-            location || null,
+            city || '',
+            district || '',
+            address || null,
             budget || 0,
-            startDate || null,
-            endDate || null,
-            status || 'planning',
+            start_date || null,
+            end_date || null,
+            status || 'Planlama',
             req.user.id
         ]);
 
@@ -44,8 +45,8 @@ router.post('/', auth, async (req, res) => {
         // Audit Log kaydet
         const auditQuery = `
             INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         `;
         
         await query(auditQuery, [
@@ -73,7 +74,7 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description, location, budget, startDate, endDate, status } = req.body;
+        const { name, city, district, address, budget, start_date, end_date, status } = req.body;
 
         // Önce mevcut projeyi kontrol et
         const checkResult = await query(
@@ -98,26 +99,27 @@ router.put('/:id', auth, async (req, res) => {
         if (budget && parseFloat(budget) !== oldProject.budget) {
             changes.push(`Bütçe: ₺${oldProject.budget} -> ₺${budget}`);
         }
-        if (location && location !== oldProject.location) {
-            changes.push(`Konum değişti`);
+        if (city && city !== oldProject.city) {
+            changes.push(`Şehir: ${oldProject.city} -> ${city}`);
         }
 
         // Projeyi güncelle
         const updateQuery = `
             UPDATE "Projects" 
-            SET "name" = $1, "description" = $2, "location" = $3, "budget" = $4, 
-                "startDate" = $5, "endDate" = $6, "status" = $7, "updatedAt" = NOW()
-            WHERE "id" = $8 AND "userId" = $9
+            SET "name" = $1, "city" = $2, "district" = $3, "address" = $4, "budget" = $5, 
+                "start_date" = $6, "end_date" = $7, "status" = $8, "updatedAt" = NOW()
+            WHERE "id" = $9 AND "userId" = $10
             RETURNING *
         `;
 
         const result = await query(updateQuery, [
             name || oldProject.name,
-            description !== undefined ? description : oldProject.description,
-            location !== undefined ? location : oldProject.location,
+            city !== undefined ? city : oldProject.city,
+            district !== undefined ? district : oldProject.district,
+            address !== undefined ? address : oldProject.address,
             budget !== undefined ? budget : oldProject.budget,
-            startDate !== undefined ? startDate : oldProject.startDate,
-            endDate !== undefined ? endDate : oldProject.endDate,
+            start_date !== undefined ? start_date : oldProject.start_date,
+            end_date !== undefined ? end_date : oldProject.end_date,
             status || oldProject.status,
             id,
             req.user.id
@@ -127,8 +129,8 @@ router.put('/:id', auth, async (req, res) => {
         if (changes.length > 0) {
             const auditQuery = `
                 INSERT INTO "AuditLogs" 
-                ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+                ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
             `;
             
             await query(auditQuery, [
@@ -176,8 +178,8 @@ router.delete('/:id', auth, async (req, res) => {
         // Audit Log kaydet
         const auditQuery = `
             INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         `;
         
         await query(auditQuery, [

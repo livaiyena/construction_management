@@ -85,8 +85,8 @@ router.post('/', auth, async (req, res) => {
         // Audit Log
         const auditQuery = `
             INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         `;
         
         await query(auditQuery, [
@@ -166,8 +166,8 @@ router.put('/:id', auth, async (req, res) => {
         if (changes.length > 0) {
             const auditQuery = `
                 INSERT INTO "AuditLogs" 
-                ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+                ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
             `;
             
             await query(auditQuery, [
@@ -210,8 +210,8 @@ router.delete('/:id', auth, async (req, res) => {
         // Audit Log
         const auditQuery = `
             INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         `;
         
         await query(auditQuery, [

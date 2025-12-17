@@ -21,12 +21,16 @@ router.get('/', auth, async (req, res) => {
         const equipment = result.rows.map(row => ({
             id: row.id,
             name: row.name,
+            EquipmentTypeId: row.EquipmentTypeId,
             serial_number: row.serial_number,
             purchase_date: row.purchase_date,
             purchase_price: row.purchase_price,
-            status: row.status,
-            maintenance_date: row.maintenance_date,
-            EquipmentTypeId: row.EquipmentTypeId,
+            daily_rental_cost: row.daily_rental_cost,
+            condition: row.condition,
+            last_maintenance_date: row.last_maintenance_date,
+            next_maintenance_date: row.next_maintenance_date,
+            location: row.location,
+            isAvailable: row.isAvailable,
             userId: row.userId,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
@@ -46,23 +50,27 @@ router.get('/', auth, async (req, res) => {
 // POST /api/equipment - Yeni ekipman ekle
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, serial_number, purchase_date, purchase_price, status, maintenance_date, EquipmentTypeId } = req.body;
+        const { name, serial_number, purchase_date, purchase_price, daily_rental_cost, condition, last_maintenance_date, next_maintenance_date, location, isAvailable, EquipmentTypeId } = req.body;
         
         const insertQuery = `
             INSERT INTO "Equipment" 
-            ("name", "serial_number", "purchase_date", "purchase_price", "status", "maintenance_date", "EquipmentTypeId", "userId", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("name", "EquipmentTypeId", "serial_number", "purchase_date", "purchase_price", "daily_rental_cost", "condition", "last_maintenance_date", "next_maintenance_date", "location", "isAvailable", "userId", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
             RETURNING *
         `;
         
         const result = await query(insertQuery, [
             name,
+            EquipmentTypeId || null,
             serial_number || null,
             purchase_date || null,
             purchase_price || 0,
-            status || 'available',
-            maintenance_date || null,
-            EquipmentTypeId || null,
+            daily_rental_cost || 0,
+            condition || 'İyi',
+            last_maintenance_date || null,
+            next_maintenance_date || null,
+            location || null,
+            isAvailable !== undefined ? isAvailable : true,
             req.user.id
         ]);
 
@@ -71,8 +79,8 @@ router.post('/', auth, async (req, res) => {
         // Audit Log
         const auditQuery = `
             INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         `;
         
         await query(auditQuery, [
@@ -97,7 +105,7 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, serial_number, purchase_date, purchase_price, status, maintenance_date, EquipmentTypeId } = req.body;
+        const { name, serial_number, purchase_date, purchase_price, daily_rental_cost, condition, last_maintenance_date, next_maintenance_date, location, isAvailable, EquipmentTypeId } = req.body;
 
         const checkResult = await query('SELECT * FROM "Equipment" WHERE "id" = $1', [id]);
 
@@ -110,8 +118,9 @@ router.put('/:id', auth, async (req, res) => {
         const updateQuery = `
             UPDATE "Equipment" 
             SET "name" = $1, "serial_number" = $2, "purchase_date" = $3, "purchase_price" = $4,
-                "status" = $5, "maintenance_date" = $6, "EquipmentTypeId" = $7, "updatedAt" = NOW()
-            WHERE "id" = $8
+                "daily_rental_cost" = $5, "condition" = $6, "last_maintenance_date" = $7, "next_maintenance_date" = $8,
+                "location" = $9, "isAvailable" = $10, "EquipmentTypeId" = $11, "updatedAt" = NOW()
+            WHERE "id" = $12
             RETURNING *
         `;
 
@@ -120,8 +129,12 @@ router.put('/:id', auth, async (req, res) => {
             serial_number !== undefined ? serial_number : oldEquipment.serial_number,
             purchase_date !== undefined ? purchase_date : oldEquipment.purchase_date,
             purchase_price !== undefined ? purchase_price : oldEquipment.purchase_price,
-            status || oldEquipment.status,
-            maintenance_date !== undefined ? maintenance_date : oldEquipment.maintenance_date,
+            daily_rental_cost !== undefined ? daily_rental_cost : oldEquipment.daily_rental_cost,
+            condition || oldEquipment.condition,
+            last_maintenance_date !== undefined ? last_maintenance_date : oldEquipment.last_maintenance_date,
+            next_maintenance_date !== undefined ? next_maintenance_date : oldEquipment.next_maintenance_date,
+            location !== undefined ? location : oldEquipment.location,
+            isAvailable !== undefined ? isAvailable : oldEquipment.isAvailable,
             EquipmentTypeId !== undefined ? EquipmentTypeId : oldEquipment.EquipmentTypeId,
             id
         ]);
@@ -151,8 +164,8 @@ router.delete('/:id', auth, async (req, res) => {
         // Audit Log
         const auditQuery = `
             INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "details", "ipAddress", "userAgent", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         `;
         
         await query(auditQuery, [

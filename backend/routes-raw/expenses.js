@@ -27,7 +27,9 @@ router.get('/', auth, async (req, res) => {
             expense_date: row.expense_date,
             payment_method: row.payment_method,
             receipt_number: row.receipt_number,
-            notes: row.notes,
+            paid_to: row.paid_to,
+            approved_by: row.approved_by,
+            status: row.status,
             userId: row.userId,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
@@ -64,7 +66,7 @@ router.get('/project/:projectId', auth, async (req, res) => {
 // POST /api/expenses - Yeni harcama ekle
 router.post('/', auth, async (req, res) => {
     try {
-        const { ProjectId, category, description, amount, expense_date, payment_method, receipt_number, notes } = req.body;
+        const { ProjectId, category, description, amount, expense_date, payment_method, receipt_number, paid_to, approved_by, status } = req.body;
 
         if (!ProjectId || !amount || !expense_date) {
             return res.status(400).json({ message: 'Proje, Tutar ve Tarih zorunludur.' });
@@ -72,20 +74,22 @@ router.post('/', auth, async (req, res) => {
 
         const insertQuery = `
             INSERT INTO "Expenses" 
-            ("ProjectId", "category", "description", "amount", "expense_date", "payment_method", "receipt_number", "notes", "userId", "createdAt", "updatedAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            ("ProjectId", "category", "description", "amount", "expense_date", "payment_method", "receipt_number", "paid_to", "approved_by", "status", "userId", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
             RETURNING *
         `;
         
         const result = await query(insertQuery, [
             ProjectId,
             category || 'Diğer',
-            description || null,
+            description || '',
             amount,
             expense_date,
             payment_method || 'Nakit',
             receipt_number || null,
-            notes || null,
+            paid_to || null,
+            approved_by || null,
+            status || 'Beklemede',
             req.user.id
         ]);
 
@@ -100,13 +104,13 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { ProjectId, category, description, amount, expense_date, payment_method, receipt_number, notes } = req.body;
+        const { ProjectId, category, description, amount, expense_date, payment_method, receipt_number, paid_to, approved_by, status } = req.body;
 
         const updateQuery = `
             UPDATE "Expenses" 
             SET "ProjectId" = $1, "category" = $2, "description" = $3, "amount" = $4,
-                "expense_date" = $5, "payment_method" = $6, "receipt_number" = $7, "notes" = $8, "updatedAt" = NOW()
-            WHERE "id" = $9 AND "userId" = $10
+                "expense_date" = $5, "payment_method" = $6, "receipt_number" = $7, "paid_to" = $8, "approved_by" = $9, "status" = $10, "updatedAt" = NOW()
+            WHERE "id" = $11 AND "userId" = $12
             RETURNING *
         `;
 
@@ -118,7 +122,9 @@ router.put('/:id', auth, async (req, res) => {
             expense_date,
             payment_method,
             receipt_number,
-            notes,
+            paid_to,
+            approved_by,
+            status,
             id,
             req.user.id
         ]);

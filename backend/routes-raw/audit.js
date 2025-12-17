@@ -76,7 +76,7 @@ router.get('/', auth, async (req, res) => {
             recordId: row.recordId,
             userId: row.userId,
             userName: row.userName,
-            details: row.details,
+            changes: row.changes,
             ipAddress: row.ipAddress,
             userAgent: row.userAgent,
             createdAt: row.createdAt,

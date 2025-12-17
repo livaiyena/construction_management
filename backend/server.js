@@ -11,6 +11,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Health check endpoint (routes'tan önce)
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', message: 'Server is running with raw SQL' });
+});
+
 // Raw SQL Rotaları - Tüm route'lar raw SQL kullanıyor
 app.use('/api/auth', require('./routes-raw/auth'));
 app.use('/api/projects', require('./routes-raw/projects'));
@@ -27,11 +32,6 @@ app.use('/api/categories', require('./routes-raw/materialCategories'));
 app.use('/api/equipment-types', require('./routes-raw/equipmentTypes'));
 app.use('/api/users', require('./routes-raw/users'));
 app.use('/api/documents', require('./routes-raw/documents'));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'OK', message: 'Server is running with raw SQL' });
-});
 
 const PORT = process.env.PORT || 5000;
 
