@@ -58,7 +58,20 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            // Backend'e logout isteği gönder
+            await api.post('/auth/logout', {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+        } catch (error) {
+            console.error("Çıkış Hatası:", error);
+            // Hata olsa bile local verileri temizle
+        }
+        
+        // Local state'i temizle
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);

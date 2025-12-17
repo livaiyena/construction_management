@@ -10,6 +10,21 @@ import { useToast } from '../context/ToastContext'
 import { generateDashboardReport } from '../utils/reportUtils'
 import { useNotification } from '../context/NotificationContext'
 
+// Renklerin parlak versiyonlarının haritası
+const getBrightStroke = (color) => {
+    const colorMap = {
+        '#3b82f6': '#0284c7', // Blue -> Bright Blue
+        '#10b981': '#059669', // Green -> Bright Green
+        '#8b5cf6': '#7c3aed', // Purple -> Bright Purple
+        '#ec4899': '#db2777', // Pink -> Bright Pink
+        '#f59e0b': '#d97706', // Amber -> Bright Amber
+        '#ef4444': '#dc2626', // Red -> Bright Red
+        '#06b6d4': '#0891b2', // Cyan -> Bright Cyan
+        '#6366f1': '#4f46e5'  // Indigo -> Bright Indigo
+    }
+    return colorMap[color] || color
+}
+
 export default function Dashboard() {
     const navigate = useNavigate()
     const [showNotifications, setShowNotifications] = useState(false)
@@ -20,6 +35,7 @@ export default function Dashboard() {
     const [selectedStatus, setSelectedStatus] = useState('')
     const [selectedProject, setSelectedProject] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [hoveredBar, setHoveredBar] = useState(null)
     const notificationRef = useRef(null)
 
     const { showToast } = useToast()
@@ -406,8 +422,26 @@ export default function Dashboard() {
                             ]}>
                                 <XAxis dataKey="name" />
                                 <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                                <Tooltip cursor={{ fill: 'transparent' }} />
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[8, 8, 0, 0]}
+                                    onMouseEnter={(data) => setHoveredBar(data.name)}
+                                    onMouseLeave={() => setHoveredBar(null)}
+                                >
+                                    {[
+                                        { name: 'Aktif', fill: '#3b82f6' },
+                                        { name: 'Tamamlanan', fill: '#10b981' },
+                                        { name: 'Toplam', fill: '#8b5cf6' }
+                                    ].map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.fill}
+                                            stroke={hoveredBar === entry.name ? getBrightStroke(entry.fill) : 'none'}
+                                            strokeWidth={hoveredBar === entry.name ? 3 : 0}
+                                        />
+                                    ))}
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     )}
@@ -633,6 +667,7 @@ export default function Dashboard() {
                                                     tick={{ fontSize: 12 }}
                                                 />
                                                 <Tooltip
+                                                    cursor={{ fill: 'transparent' }}
                                                     formatter={(value) => [`${value.toLocaleString('tr-TR')} ₺`, 'Harcama']}
                                                     labelFormatter={(label) => {
                                                         const item = dashboardData.allProjects.find(p =>
@@ -642,7 +677,35 @@ export default function Dashboard() {
                                                     }}
                                                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
                                                 />
-                                                <Bar dataKey="harcama" radius={[8, 8, 0, 0]} />
+                                                <Bar 
+                                                    dataKey="harcama" 
+                                                    radius={[8, 8, 0, 0]}
+                                                    onMouseEnter={(data) => setHoveredBar(data.name)}
+                                                    onMouseLeave={() => setHoveredBar(null)}
+                                                >
+                                                    {(() => {
+                                                        return dashboardData.allProjects.map((project, index) => {
+                                                            const barData = dashboardData.allProjects.map((p, i) => {
+                                                                const projectExpenses = (dashboardData.expenses.allExpenses || []).filter(
+                                                                    exp => exp.ProjectId === p.id
+                                                                )
+                                                                return {
+                                                                    name: p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name
+                                                                }
+                                                            })
+                                                            const isHovered = hoveredBar === barData[index]?.name
+                                                            const fillColor = COLORS[index % COLORS.length]
+                                                            return (
+                                                                <Cell 
+                                                                    key={`cell-${index}`}
+                                                                    fill={fillColor}
+                                                                    stroke={isHovered ? getBrightStroke(fillColor) : 'none'}
+                                                                    strokeWidth={isHovered ? 3 : 0}
+                                                                />
+                                                            )
+                                                        })
+                                                    })()}
+                                                </Bar>
                                             </BarChart>
                                         </ResponsiveContainer>
                                     ) : (

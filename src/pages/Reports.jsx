@@ -14,6 +14,176 @@ export default function Reports() {
     const { showToast } = useToast()
     const { addNotification } = useNotification()
 
+    // Tablo başlıkları çevirisi
+    const headerTranslations = {
+        'id': 'ID',
+        'project_id': 'Proje ID',
+        'project_name': 'Proje Adı',
+        'name': 'Adı',
+        'status': 'Durum',
+        'city': 'Şehir',
+        'district': 'İlçe',
+        'address': 'Adres',
+        'start_date': 'Başlangıç Tarihi',
+        'end_date': 'Bitiş Tarihi',
+        'budget': 'Bütçe',
+        'total_expense': 'Toplam Harcama',
+        'total_expenses': 'Toplam Harcama',
+        'total_spent': 'Toplam Harcanan',
+        'remaining_budget': 'Kalan Bütçe',
+        'expense_count': 'Harcama Sayısı',
+        'expense_transactions': 'Harcama İşlemleri',
+        'average_expense': 'Ortalama Harcama',
+        'min_amount': 'Minimum Tutarı',
+        'max_amount': 'Maksimum Tutarı',
+        'avg_amount': 'Ortalama Tutarı',
+        'average_amount': 'Ortalama Tutarı',
+        'transaction_count': 'İşlem Sayısı',
+        'total_amount': 'Toplam Tutarı',
+        'category': 'Kategori',
+        'employee_id': 'Çalışan ID',
+        'employee_name': 'Çalışan Adı',
+        'emp_position': 'Pozisyon',
+        'total_days': 'Toplam Gün',
+        'present_days': 'Geldi Günü',
+        'absent_days': 'Gelmedi Günü',
+        'sick_leave_days': 'İzinli Günü',
+        'excused_days': 'Mazeret Günü',
+        'total_worked_hours': 'Toplam Çalışılan Saat',
+        'total_overtime_hours': 'Toplam Fazla Mesai Saati',
+        'attendance_rate': 'Katılım Oranı (%)',
+        'email': 'E-posta',
+        'phone': 'Telefon',
+        'department': 'Departman',
+        'daily_rate': 'Günlük Ücret',
+        'salary': 'Maaş',
+        'attendance_date': 'Yoklama Tarihi',
+        'date': 'Tarih',
+        'attendance_count': 'Katılım Sayısı',
+        'days_present': 'Katılı Gün',
+        'present': 'Katıldı',
+        'present_count': 'Katıldı Sayısı',
+        'days_absent': 'Devamsız Gün',
+        'absent': 'Katılmadı',
+        'absent_count': 'Katılmadı Sayısı',
+        'on_leave': 'İzinli',
+        'days_leave': 'İzin Günü',
+        'leave_count': 'İzin Sayısı',
+        'attendance_rate': 'Katılım Oranı',
+        'attendance_percentage': 'Katılım Yüzdesi',
+        'month': 'Ay',
+        'month_year': 'Ay-Yıl',
+        'month_name': 'Ay Adı',
+        'week': 'Hafta',
+        'total_records': 'Toplam Kayıt',
+        'amount': 'Tutarı',
+        'payment_method': 'Ödeme Yöntemi',
+        'payment_status': 'Ödeme Durumu',
+        'description': 'Açıklama',
+        'expense_date': 'Harcama Tarihi',
+        'performance_score': 'Performans Skoru',
+        'projects_completed': 'Tamamlanan Projeler',
+        'average_rating': 'Ortalama Puan',
+        'cost': 'Maliyet',
+        'revenue': 'Gelir',
+        'profit': 'Kar',
+        'duration_days': 'Süre (Gün)',
+        'expense_budget_ratio': 'Harcama/Bütçe Oranı',
+        'project_status': 'Proje Durumu',
+        'count': 'Sayı',
+        'due_date': 'Vade Tarihi',
+        'days_overdue': 'Geciken Gün',
+        'days_pending': 'Beklemede Gün',
+        'priority_level': 'Aciliyet Düzeyi',
+        'budget_usage_percentage': 'Bütçe Kullanım Yüzdesi',
+        'team_size': 'Ekip Büyüklüğü',
+        'employee_count': 'Çalışan Sayısı',
+        'avg_daily_rate': 'Ort. Günlük Ücret',
+        'min_daily_rate': 'Min. Günlük Ücret',
+        'max_daily_rate': 'Maks. Günlük Ücret',
+        'estimated_monthly_avg': 'Tahmini Aylık Ort.',
+        'days_worked': 'Çalışılan Gün',
+        'total_hours': 'Toplam Saat',
+        'worked_hours': 'Çalışılan Saat',
+        'total_cost': 'Toplam Maliyet',
+        'total_attendance_days': 'Toplam Katılı Gün',
+        'total_worked_hours': 'Toplam Çalışılan Saat',
+        'total_overtime_hours': 'Toplam Fazla Mesai Saati',
+        'project_id': 'Proje ID',
+        'project_name': 'Proje Adı',
+        'total_expense_amount': 'Toplam Harcama Tutarı',
+        'over_budget': 'Bütçe Aşan',
+        'budget_variance': 'Bütçe Sapması',
+        'avg_expense': 'Ort. Harcama',
+        'project_count': 'Proje Sayısı',
+        'worked': 'Çalışıldı',
+        'leave': 'İzin',
+        'first_name': 'Ad',
+        'last_name': 'Soyad',
+        'concat': 'Adı Soyadı',
+        'january': 'Ocak',
+        'february': 'Şubat',
+        'march': 'Mart',
+        'april': 'Nisan',
+        'may': 'Mayıs',
+        'june': 'Haziran',
+        'july': 'Temmuz',
+        'august': 'Ağustos',
+        'september': 'Eylül',
+        'october': 'Ekim',
+        'november': 'Kasım',
+        'december': 'Aralık',
+        // VIEW ve PROCEDURE için ek çeviriler
+        'employee_full_name': 'Çalışan Adı',
+        'full_name': 'Ad Soyad',
+        'projects_count': 'Proje Sayısı',
+        'total_project_cost': 'Toplam Proje Maliyeti',
+        'project_expense': 'Proje Harcaması',
+        'project_total_cost': 'Proje Toplam Maliyeti',
+        'project_budget': 'Proje Bütçesi',
+        'is_over_budget': 'Bütçe Aşan',
+        'budget_status': 'Bütçe Durumu',
+        'is_active': 'Aktif',
+        'is_pending': 'Beklemede',
+        'total_budget': 'Toplam Bütçe',
+        'total_spent_amount': 'Toplam Harcanan Tutarı',
+        'alert_reason': 'Uyarı Nedeni',
+        'alert_level': 'Uyarı Seviyesi',
+        'avg_daily_hours': 'Ort. Günlük Saat',
+        'labor_cost': 'İşçilik Maliyeti',
+        'material_cost': 'Malzeme Maliyeti'
+    }
+
+    const translateHeader = (header) => {
+        const lowerHeader = header.toLowerCase()
+        return headerTranslations[lowerHeader] || header.replace(/_/g, ' ').toUpperCase()
+    }
+
+    // Ay adlarını türkçeye çevir
+    const translateMonthName = (monthName) => {
+        if (!monthName) return monthName
+        const months = {
+            'January': 'Ocak',
+            'February': 'Şubat',
+            'March': 'Mart',
+            'April': 'Nisan',
+            'May': 'Mayıs',
+            'June': 'Haziran',
+            'July': 'Temmuz',
+            'August': 'Ağustos',
+            'September': 'Eylül',
+            'October': 'Ekim',
+            'November': 'Kasım',
+            'December': 'Aralık'
+        }
+        
+        // "Month YYYY" formatını türkçeye çevir
+        for (const [eng, tr] of Object.entries(months)) {
+            monthName = monthName.replace(eng, tr)
+        }
+        return monthName
+    }
+
     const reports = [
         { id: 'project-expenses', name: 'Proje Bazlı Harcamalar', icon: Building2, sql: 'JOIN, SUM, GROUP BY' },
         { id: 'expense-by-category', name: 'Kategori Analizi', icon: DollarSign, sql: 'GROUP BY, HAVING, Aggregates' },
@@ -109,9 +279,9 @@ export default function Reports() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:h-[calc(100vh-250px)]">
                 {/* SOL MENU - Rapor Listesi */}
-                <div className="lg:col-span-1 space-y-2">
+                <div className="lg:col-span-1 space-y-2 overflow-y-auto max-h-[60vh] lg:max-h-full pr-2">
                     <h3 className="font-semibold text-slate-700 mb-3 text-sm uppercase tracking-wider">Rapor Türleri</h3>
                     {reports.map(report => {
                         const isViewOrProcedure = report.type === 'view' || report.type === 'procedure';
@@ -129,27 +299,23 @@ export default function Reports() {
                                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                             >
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2">
                                     <report.icon size={16} />
                                     <span className="font-semibold text-sm">{report.name}</span>
                                 </div>
-                                <p className="text-xs opacity-70 ml-6">{report.sql}</p>
                             </button>
                         );
                     })}
                 </div>
 
                 {/* SAĞ İÇERİK - Rapor Sonuçları */}
-                <div className="lg:col-span-3">
-                    <div className="card">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h3 className="font-bold text-lg text-slate-800">
+                <div className="lg:col-span-3 flex flex-col">
+                    <div className="card flex-1 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center mb-6 flex-shrink-0">
+                            <div className="flex-1 text-center">
+                                <h3 className="font-bold text-lg text-slate-800 uppercase">
                                     {reports.find(r => r.id === activeReport)?.name}
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-1">
-                                    SQL: {reports.find(r => r.id === activeReport)?.sql}
-                                </p>
                             </div>
                             <span className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
                                 {reportData.length} Kayıt
@@ -166,13 +332,13 @@ export default function Reports() {
                                 <p>Veri bulunamadı</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto overflow-y-auto flex-1">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
                                         <tr>
                                             {Object.keys(reportData[0]).map(header => (
                                                 <th key={header} className="text-left p-3 font-semibold text-slate-700 uppercase text-xs">
-                                                    {header.replace(/_/g, ' ')}
+                                                    {translateHeader(header)}
                                                 </th>
                                             ))}
                                         </tr>
@@ -180,10 +346,12 @@ export default function Reports() {
                                     <tbody>
                                         {reportData.map((row, idx) => (
                                             <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                                {Object.values(row).map((value, i) => (
+                                                {Object.entries(row).map(([key, value], i) => (
                                                     <td key={i} className="p-3 text-slate-700">
                                                         {typeof value === 'number' && value > 999
                                                             ? value.toLocaleString('tr-TR')
+                                                            : key.toLowerCase() === 'month_name'
+                                                            ? translateMonthName(value?.toString() || '-')
                                                             : value?.toString() || '-'}
                                                     </td>
                                                 ))}
@@ -196,7 +364,7 @@ export default function Reports() {
                     </div>
 
                     {/* SQL AÇIKLAMA NOTU */}
-                    <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex-shrink-0">
                         <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
                             <FileText size={16} />
                             SQL Sorgu Özellikleri
@@ -280,6 +448,7 @@ export default function Reports() {
                         </div>
                     </div>
                 </Portal>
-            )}        </div>
+            )}
+        </div>
     )
 }

@@ -8,7 +8,7 @@ export default function Team() {
 
     const tabs = [
         { id: 'employees', label: 'Çalışanlar', icon: Users, component: Employees },
-        { id: 'roles', label: 'Roller & Görevler', icon: Briefcase, component: Roles },
+        { id: 'roles', label: 'Roller ', icon: Briefcase, component: Roles },
     ]
 
     const ActiveComponent = tabs.find(t => t.id === activeTab)?.component

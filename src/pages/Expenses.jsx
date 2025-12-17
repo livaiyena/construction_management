@@ -6,6 +6,21 @@ import { useToast } from '../context/ToastContext'
 import { useNotification } from '../context/NotificationContext'
 import Portal from '../components/Portal'
 
+// Renklerin parlak versiyonlarının haritası
+const getBrightStroke = (color) => {
+    const colorMap = {
+        '#3b82f6': '#0284c7', // Blue -> Bright Blue
+        '#10b981': '#059669', // Green -> Bright Green
+        '#8b5cf6': '#7c3aed', // Purple -> Bright Purple
+        '#ec4899': '#db2777', // Pink -> Bright Pink
+        '#f59e0b': '#d97706', // Amber -> Bright Amber
+        '#ef4444': '#dc2626', // Red -> Bright Red
+        '#06b6d4': '#0891b2', // Cyan -> Bright Cyan
+        '#6366f1': '#4f46e5'  // Indigo -> Bright Indigo
+    }
+    return colorMap[color] || color
+}
+
 export default function Expenses() {
     const [expenses, setExpenses] = useState([])
     const [projects, setProjects] = useState([])
@@ -18,6 +33,7 @@ export default function Expenses() {
     const [isEditing, setIsEditing] = useState(false)
     const [editId, setEditId] = useState(null)
     const [filterProject, setFilterProject] = useState('')
+    const [hoveredBar, setHoveredBar] = useState(null)
 
     const [formData, setFormData] = useState({
         ProjectId: '',
@@ -618,7 +634,7 @@ export default function Expenses() {
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowExpenseChartModal(false)}></div>
 
-                            <div className="relative bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="relative bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
                                 {/* Modal Header */}
                                 <div className="sticky top-0 z-10 bg-gradient-to-br from-violet-600 to-purple-700 p-6 rounded-t-2xl">
                                     <div className="flex items-center justify-between text-white">
@@ -641,7 +657,7 @@ export default function Expenses() {
                                 </div>
 
                                 {/* Modal Content */}
-                                <div className="p-6">
+                                <div className="flex-1 overflow-y-auto p-6">
                                     {/* İstatistik Kartları */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                         <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 p-5 rounded-xl">
@@ -693,37 +709,51 @@ export default function Expenses() {
                                                         }
                                                     })
                                                 })()}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                                                     <XAxis
                                                         dataKey="name"
                                                         angle={-45}
                                                         textAnchor="end"
-                                                        height={100}
-                                                        tick={{ fontSize: 12, fill: '#475569' }}
+                                                        height={80}
+                                                        tick={{ fontSize: 12 }}
                                                     />
                                                     <YAxis
-                                                        tick={{ fontSize: 12, fill: '#475569' }}
-                                                        tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                                                        tickFormatter={(value) => `${(value / 1000).toLocaleString('tr-TR')}K`}
+                                                        tick={{ fontSize: 12 }}
                                                     />
                                                     <Tooltip
-                                                        content={({ active, payload }) => {
-                                                            if (active && payload && payload[0]) {
-                                                                return (
-                                                                    <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200">
-                                                                        <p className="font-bold text-slate-800 mb-2">{payload[0].payload.fullName}</p>
-                                                                        <p className="text-violet-600 font-semibold">
-                                                                            {Math.floor(payload[0].value).toLocaleString('tr-TR')} ₺
-                                                                        </p>
-                                                                    </div>
-                                                                )
-                                                            }
-                                                            return null
+                                                        cursor={{ fill: 'transparent' }}
+                                                        formatter={(value) => [`${value.toLocaleString('tr-TR')} ₺`, 'Harcama']}
+                                                        labelFormatter={(label) => {
+                                                            const item = projects.find(p =>
+                                                                (p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name) === label
+                                                            )
+                                                            return item ? item.name : label
                                                         }}
+                                                        contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
                                                     />
-                                                    <Bar dataKey="harcama" radius={[8, 8, 0, 0]}>
-                                                        {projects.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} />
-                                                        ))}
+                                                    <Bar 
+                                                        dataKey="harcama" 
+                                                        radius={[8, 8, 0, 0]}
+                                                        onMouseEnter={(data) => setHoveredBar(data.name)}
+                                                        onMouseLeave={() => setHoveredBar(null)}
+                                                    >
+                                                        {(() => {
+                                                            const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1']
+                                                            return projects.map((project, index) => {
+                                                                const projectExpenses = expenses.filter(exp => exp.ProjectId === project.id)
+                                                                const barName = project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name
+                                                                const isHovered = hoveredBar === barName
+                                                                const fillColor = COLORS[index % COLORS.length]
+                                                                return (
+                                                                    <Cell 
+                                                                        key={`cell-${index}`}
+                                                                        fill={fillColor}
+                                                                        stroke={isHovered ? getBrightStroke(fillColor) : 'none'}
+                                                                        strokeWidth={isHovered ? 3 : 0}
+                                                                    />
+                                                                )
+                                                            })
+                                                        })()}
                                                     </Bar>
                                                 </BarChart>
                                             </ResponsiveContainer>
@@ -746,25 +776,26 @@ export default function Expenses() {
 
                                                 return (
                                                     <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3 flex-1">
-                                                                <div
-                                                                    className="w-4 h-4 rounded-full"
-                                                                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                                                                ></div>
-                                                                <div className="flex-1">
-                                                                    <p className="font-bold text-slate-800">{project.name}</p>
-                                                                    <p className="text-xs text-slate-500 mt-1">{projectExpenses.length} harcama kaydı</p>
-                                                                </div>
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <div className="flex-1">
+                                                                <h4 className="font-semibold text-slate-800">{project.name}</h4>
+                                                                <p className="text-xs text-slate-500 mt-1">{project.city}, {project.district}</p>
+                                                                <p className="text-xs text-slate-600 mt-1">{projectExpenses.length} harcama kaydı</p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="text-lg font-bold text-violet-600">
+                                                                <p className="text-lg font-bold" style={{ color: COLORS[index % COLORS.length] }}>
                                                                     {Math.floor(projectTotal).toLocaleString('tr-TR')} ₺
                                                                 </p>
-                                                                <p className="text-xs text-slate-500">
-                                                                    {totalAmount > 0 ? `%${((projectTotal / totalAmount) * 100).toFixed(1)}` : '0%'}
-                                                                </p>
+                                                                <p className="text-xs text-slate-500">Toplam Harcama</p>
                                                             </div>
+                                                        </div>
+                                                        <div className="flex gap-2 mt-3">
+                                                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                                                                {project.status}
+                                                            </span>
+                                                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                                                Bütçe: {project.budget ? parseFloat(project.budget).toLocaleString('tr-TR') : '0'} ₺
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )
