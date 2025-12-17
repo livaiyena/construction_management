@@ -84,18 +84,19 @@ export default function Roles() {
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Rol</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Açıklama</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Varsayılan Günlük Ücret</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Çalışan Sayısı</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Varsayılan Günlük Ücret</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Oluşturulma</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="3" className="px-4 py-12 text-center text-slate-500">Yükleniyor...</td>
+                                    <td colSpan="4" className="px-4 py-12 text-center text-slate-500">Yükleniyor...</td>
                                 </tr>
                             ) : filteredRoles.length === 0 ? (
                                 <tr>
-                                    <td colSpan="3" className="px-4 py-12 text-center text-slate-500">
+                                    <td colSpan="4" className="px-4 py-12 text-center text-slate-500">
                                         <Briefcase className="mx-auto text-slate-300 mb-2" size={48} />
                                         Kayıtlı rol bulunamadı
                                     </td>
@@ -111,9 +112,16 @@ export default function Roles() {
                                                 <p className="font-semibold text-slate-800">{role.name}</p>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 text-sm text-slate-600">{role.description || 'Açıklama yok'}</td>
-                                        <td className="px-4 py-4 text-right">
+                                        <td className="px-4 py-4 text-center">
+                                            <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
+                                                {role.employee_count || 0}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
                                             <span className="font-semibold text-slate-800">{role.default_daily_rate || 0} ₺</span>
+                                        </td>
+                                        <td className="px-4 py-4 text-center text-sm text-slate-600">
+                                            {role.createdAt ? new Date(role.createdAt).toLocaleDateString('tr-TR') : '-'}
                                         </td>
                                     </tr>
                                 ))

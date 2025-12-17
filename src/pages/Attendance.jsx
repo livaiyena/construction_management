@@ -34,9 +34,16 @@ export default function Attendance() {
             startDate: todayDate,
             endDate: todayDate,
             projectId: '',
-            status: searchParams.get('status') || ''
+            status: searchParams.get('status') || '',
+            searchName: ''
         }
     })
+    
+    // Form için arama state'leri
+    const [employeeSearch, setEmployeeSearch] = useState('')
+    const [projectSearch, setProjectSearch] = useState('')
+    const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
+    const [showProjectDropdown, setShowProjectDropdown] = useState(false)
 
     const [formData, setFormData] = useState({
         EmployeeId: '',
@@ -53,6 +60,18 @@ export default function Attendance() {
 
     useEffect(() => {
         fetchInitialData()
+    }, [])
+    
+    // Dropdown'ların dışına tıklayınca kapat
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.relative')) {
+                setShowEmployeeDropdown(false)
+                setShowProjectDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
     const fetchInitialData = async () => {
@@ -111,6 +130,10 @@ export default function Attendance() {
             overtime_hours: 0,
             notes: ''
         })
+        setEmployeeSearch('')
+        setProjectSearch('')
+        setShowEmployeeDropdown(false)
+        setShowProjectDropdown(false)
         setIsEditing(false)
         setEditId(null)
     }
@@ -125,6 +148,18 @@ export default function Attendance() {
             overtime_hours: attendance.overtime_hours,
             notes: attendance.notes || ''
         })
+        
+        // Seçili çalışan ve proje isimlerini yükle
+        const selectedEmployee = employees.find(e => e.id === attendance.EmployeeId)
+        const selectedProject = projects.find(p => p.id === attendance.ProjectId)
+        
+        if (selectedEmployee) {
+            setEmployeeSearch(`${selectedEmployee.first_name} ${selectedEmployee.last_name}`)
+        }
+        if (selectedProject) {
+            setProjectSearch(selectedProject.name)
+        }
+        
         setEditId(attendance.id)
         setIsEditing(true)
         setShowModal(true)
@@ -268,6 +303,18 @@ export default function Attendance() {
 
     // Filtrelenmiş yoklama listesi
     const filteredAttendances = attendances.filter(attendance => {
+        // İsim arama filtresi
+        if (filters.searchName) {
+            // Employee objesi veya direkt alanları kullan
+            const firstName = attendance.Employee?.first_name || attendance.employee_first_name || '';
+            const lastName = attendance.Employee?.last_name || attendance.employee_last_name || '';
+            const fullName = `${firstName} ${lastName}`.toLowerCase().trim();
+            
+            if (!fullName.includes(filters.searchName.toLowerCase())) {
+                return false;
+            }
+        }
+        
         // Proje filtresi
         if (filters.projectId && attendance.ProjectId !== parseInt(filters.projectId)) {
             return false
@@ -328,6 +375,7 @@ export default function Attendance() {
             dateMode: 'today',
             startDate: todayDate,
             endDate: todayDate,
+            searchName: '',
             projectId: '',
             status: ''
         })
@@ -479,7 +527,24 @@ export default function Attendance() {
                     </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                    {/* İsim Arama */}
+                    <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Çalışan Ara
+                        </label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="İsim ile ara..."
+                                value={filters.searchName}
+                                onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            />
+                        </div>
+                    </div>
+                    
                     {/* Başlangıç Tarihi */}
                     <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1.5">
@@ -576,6 +641,11 @@ export default function Attendance() {
                         {filters.status && (
                             <span className="px-2 py-1 bg-green-50 text-green-700 rounded">
                                 {filters.status === 'Geldi' ? '✅' : filters.status === 'Gelmedi' ? '❌' : '📅'} {filters.status}
+                            </span>
+                        )}
+                        {filters.searchName && (
+                            <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded">
+                                🔍 "{filters.searchName}"
                             </span>
                         )}
                         <span className="ml-auto font-semibold text-primary-600">
@@ -746,36 +816,102 @@ export default function Attendance() {
                             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
                                 <div className="p-6 space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
+                                        {/* Aranabilir Çalışan Dropdown */}
+                                        <div className="relative">
                                             <label className="block text-sm font-medium text-slate-700 mb-1.5">Çalışan *</label>
-                                            <select
-                                                value={formData.EmployeeId}
-                                                onChange={(e) => setFormData({ ...formData, EmployeeId: e.target.value })}
-                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                                required
-                                            >
-                                                <option value="">Seçiniz</option>
-                                                {employees.map(e => (
-                                                    <option key={e.id} value={e.id}>
-                                                        {e.first_name} {e.last_name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Çalışan ara..."
+                                                    value={employeeSearch}
+                                                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                                                    onFocus={() => setShowEmployeeDropdown(true)}
+                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8"
+                                                />
+                                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                            </div>
+                                            {showEmployeeDropdown && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                    {employees
+                                                        .filter(e => {
+                                                            const fullName = `${e.first_name} ${e.last_name}`.toLowerCase()
+                                                            return fullName.includes(employeeSearch.toLowerCase())
+                                                        })
+                                                        .map(e => (
+                                                            <div
+                                                                key={e.id}
+                                                                onClick={() => {
+                                                                    setFormData({ ...formData, EmployeeId: e.id })
+                                                                    setEmployeeSearch(`${e.first_name} ${e.last_name}`)
+                                                                    setShowEmployeeDropdown(false)
+                                                                }}
+                                                                className={`px-3 py-2 hover:bg-primary-50 cursor-pointer text-sm ${
+                                                                    formData.EmployeeId === e.id ? 'bg-primary-100 text-primary-700 font-medium' : 'text-slate-700'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <Users size={14} className="text-slate-400" />
+                                                                    {e.first_name} {e.last_name}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    }
+                                                    {employees.filter(e => {
+                                                        const fullName = `${e.first_name} ${e.last_name}`.toLowerCase()
+                                                        return fullName.includes(employeeSearch.toLowerCase())
+                                                    }).length === 0 && (
+                                                        <div className="px-3 py-4 text-center text-sm text-slate-500">
+                                                            Çalışan bulunamadı
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        <div>
+                                        {/* Aranabilir Proje Dropdown */}
+                                        <div className="relative">
                                             <label className="block text-sm font-medium text-slate-700 mb-1.5">Proje *</label>
-                                            <select
-                                                value={formData.ProjectId}
-                                                onChange={(e) => setFormData({ ...formData, ProjectId: e.target.value })}
-                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                                required
-                                            >
-                                                <option value="">Seçiniz</option>
-                                                {projects.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
-                                            </select>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Proje ara..."
+                                                    value={projectSearch}
+                                                    onChange={(e) => setProjectSearch(e.target.value)}
+                                                    onFocus={() => setShowProjectDropdown(true)}
+                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8"
+                                                />
+                                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                            </div>
+                                            {showProjectDropdown && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                    {projects
+                                                        .filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+                                                        .map(p => (
+                                                            <div
+                                                                key={p.id}
+                                                                onClick={() => {
+                                                                    setFormData({ ...formData, ProjectId: p.id })
+                                                                    setProjectSearch(p.name)
+                                                                    setShowProjectDropdown(false)
+                                                                }}
+                                                                className={`px-3 py-2 hover:bg-primary-50 cursor-pointer text-sm ${
+                                                                    formData.ProjectId === p.id ? 'bg-primary-100 text-primary-700 font-medium' : 'text-slate-700'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <Building2 size={14} className="text-slate-400" />
+                                                                    {p.name}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    }
+                                                    {projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
+                                                        <div className="px-3 py-4 text-center text-sm text-slate-500">
+                                                            Proje bulunamadı
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

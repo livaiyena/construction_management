@@ -1,7 +1,9 @@
 import { Home, Building2, Users, Calendar, DollarSign, FileText, Settings, ChevronRight, Package } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 export default function Sidebar() {
+    const navigate = useNavigate()
+    
     const navItems = [
         { name: 'Genel Bakış', icon: Home, path: '/' },
         { name: 'Projeler', icon: Building2, path: '/projects' },
@@ -19,12 +21,15 @@ export default function Sidebar() {
             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-primary-900/20 to-transparent pointer-events-none" />
 
             <div className="p-8 relative z-10">
-                <div className="flex items-center gap-3 mb-1">
-                    <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/30">
+                <div 
+                    onClick={() => navigate('/')} 
+                    className="flex items-center gap-3 mb-1 cursor-pointer group transition-transform hover:scale-105 active:scale-95"
+                >
+                    <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/30 group-hover:shadow-primary-500/50 transition-shadow">
                         <Building2 className="text-white" size={22} />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight">İnşaat<span className="text-primary-400">Yön</span></h1>
+                        <h1 className="text-xl font-bold tracking-tight group-hover:text-primary-400 transition-colors">İnşaat<span className="text-primary-400">Yön</span></h1>
                     </div>
                 </div>
                 <p className="text-slate-500 text-xs pl-[3.25rem]">Profesyonel Yönetim</p>

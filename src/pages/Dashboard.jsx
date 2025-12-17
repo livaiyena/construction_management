@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building, Users, DollarSign, Activity, TrendingUp, Bell, Briefcase, Calendar, ArrowRight, CheckCircle2, Clock, AlertCircle, Building2 } from 'lucide-react'
+import { Building, Users, DollarSign, Activity, TrendingUp, Bell, Briefcase, Calendar, ArrowRight, CheckCircle2, Clock, AlertCircle, Building2, FileDown } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import Skeleton from '../components/ui/Skeleton'
@@ -23,7 +23,7 @@ export default function Dashboard() {
     const notificationRef = useRef(null)
 
     const { showToast } = useToast()
-    const { notifications, unreadCount, markAllAsRead } = useNotification()
+    const { notifications, unreadCount, markAllAsRead, addNotification } = useNotification()
 
     // Close notifications when clicking outside
     useEffect(() => {
@@ -133,12 +133,23 @@ export default function Dashboard() {
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
     const handleDownloadReport = () => {
-        const result = generateDashboardReport(dashboardData);
-        if (result.success) {
-            showToast('Rapor başarıyla indirildi.', 'success');
-            addNotification('success', 'Genel Dashboard Raporu indirildi', 'REPORT');
-        } else {
-            showToast('Rapor oluşturulurken bir hata oluştu.', 'error');
+        try {
+            console.log('📥 PDF İndirme başlıyor...');
+            console.log('Dashboard Data:', dashboardData);
+            
+            const result = generateDashboardReport(dashboardData);
+            
+            if (result.success) {
+                showToast('PDF rapor başarıyla indirildi.', 'success');
+                addNotification('success', 'Genel Dashboard Raporu indirildi', 'REPORT');
+            } else {
+                const errorMsg = result.error?.message || 'Bilinmeyen hata';
+                console.error('❌ PDF Hatası:', result.error);
+                showToast(`Rapor hatası: ${errorMsg}`, 'error');
+            }
+        } catch (error) {
+            console.error('❌ PDF İndirme Hatası:', error);
+            showToast(`Rapor oluşturulamadı: ${error.message}`, 'error');
         }
     }
 
@@ -247,8 +258,8 @@ export default function Dashboard() {
                         </div>
                     )}
 
-                    <button onClick={handleDownloadReport} className="btn-primary shadow-xl shadow-primary-500/20 active:scale-95 transition-transform">
-                        <TrendingUp size={18} /> Rapor İndir
+                    <button onClick={handleDownloadReport} className="btn-primary shadow-xl shadow-primary-500/20 active:scale-95 transition-transform flex items-center gap-2">
+                        <FileDown size={18} /> PDF Rapor İndir
                     </button>
                 </div>
             </div>

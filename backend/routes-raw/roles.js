@@ -3,10 +3,18 @@ const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
 
-// GET /api/roles - Tüm rolleri listele
+// GET /api/roles - Tüm rolleri listele (çalışan sayısı ile)
 router.get('/', auth, async (req, res) => {
     try {
-        const result = await query('SELECT * FROM "Roles" ORDER BY "name" ASC');
+        const result = await query(`
+            SELECT 
+                r.*,
+                COUNT(e."id") as employee_count
+            FROM "Roles" r
+            LEFT JOIN "Employees" e ON r."id" = e."RoleId"
+            GROUP BY r."id"
+            ORDER BY r."name" ASC
+        `);
         res.json(result.rows);
     } catch (err) {
         console.error('Rol listeleme hatası:', err);
