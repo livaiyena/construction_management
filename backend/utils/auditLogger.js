@@ -1,7 +1,7 @@
-const AuditLog = require('../models/AuditLog');
+const { query } = require('../config/db-raw');
 
 /**
- * Audit Log Helper
+ * Audit Log Helper - Raw SQL Version
  * Sistem genelinde tutarlı loglama için kullanılır
  */
 class AuditLogger {
@@ -11,8 +11,8 @@ class AuditLogger {
      * @param {number} data.userId - Kullanıcı ID
      * @param {string} data.userName - Kullanıcı adı
      * @param {string} data.action - İşlem tipi (CREATE, UPDATE, DELETE, LOGIN, LOGOUT)
-     * @param {string} data.entity - Tablo adı (Project, Employee, vb.)
-     * @param {number} data.entityId - İşlem yapılan kayıt ID
+     * @param {string} data.tableName - Tablo adı (Projects, Employees, vb.)
+     * @param {number} data.recordId - İşlem yapılan kayıt ID
      * @param {Object} data.changes - Değişiklik detayları
      * @param {Object} data.req - Express request objesi (IP ve User-Agent için)
      * @param {string} data.description - İnsan okunabilir açıklama
@@ -20,23 +20,33 @@ class AuditLogger {
      */
     static async log(data) {
         try {
-            const logData = {
-                userId: data.userId || null,
-                userName: data.userName || null,
-                action: data.action,
-                entity: data.entity,
-                entityId: data.entityId || null,
-                changes: data.changes || null,
-                description: data.description || null,
-                status: data.status || 'success',
-                ipAddress: data.req ? (data.req.headers['x-forwarded-for'] || data.req.socket.remoteAddress) : null,
-                userAgent: data.req ? data.req.headers['user-agent'] : null
-            };
+            const ipAddress = data.req 
+                ? (data.req.headers['x-forwarded-for'] || data.req.socket.remoteAddress || data.req.ip)
+                : null;
+            const userAgent = data.req ? data.req.headers['user-agent'] : null;
 
-            await AuditLog.create(logData);
+            const insertQuery = `
+                INSERT INTO "AuditLogs" 
+                ("userId", "userName", "action", "tableName", "recordId", "changes", "ipAddress", "userAgent", "timestamp", "createdAt")
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+                RETURNING *
+            `;
+
+            const changesJson = data.changes ? JSON.stringify(data.changes) : null;
+
+            await query(insertQuery, [
+                data.userId || null,
+                data.userName || 'Sistem',
+                data.action,
+                data.tableName,
+                data.recordId || null,
+                changesJson,
+                ipAddress,
+                userAgent
+            ]);
         } catch (error) {
             // Loglama hatası ana işlemi durdurmamalı
-            console.error('Audit Log Error:', error.message);
+            console.error('❌ Audit Log Error:', error.message);
         }
     }
 
@@ -44,20 +54,13 @@ class AuditLogger {
      * Proje işlemleri için kısayol
      */
     static async logProject(action, userId, userName, projectData, req, changes = null) {
-        const descriptions = {
-            'CREATE': `Yeni proje oluşturuldu: "${projectData.name}"`,
-            'UPDATE': `Proje güncellendi: "${projectData.name}"`,
-            'DELETE': `Proje silindi: "${projectData.name}"`
-        };
-
         await this.log({
             userId,
             userName,
             action,
-            entity: 'Project',
-            entityId: projectData.id,
-            changes,
-            description: descriptions[action],
+            tableName: 'Projects',
+            recordId: projectData.id,
+            changes: changes || { name: projectData.name },
             req
         });
     }
@@ -66,20 +69,13 @@ class AuditLogger {
      * Çalışan işlemleri için kısayol
      */
     static async logEmployee(action, userId, userName, employeeData, req, changes = null) {
-        const descriptions = {
-            'CREATE': `Yeni çalışan eklendi: "${employeeData.name}"`,
-            'UPDATE': `Çalışan güncellendi: "${employeeData.name}"`,
-            'DELETE': `Çalışan silindi: "${employeeData.name}"`
-        };
-
         await this.log({
             userId,
             userName,
             action,
-            entity: 'Employee',
-            entityId: employeeData.id,
-            changes,
-            description: descriptions[action],
+            tableName: 'Employees',
+            recordId: employeeData.id,
+            changes: changes || { name: employeeData.name },
             req
         });
     }
@@ -88,20 +84,13 @@ class AuditLogger {
      * Malzeme işlemleri için kısayol
      */
     static async logMaterial(action, userId, userName, materialData, req, changes = null) {
-        const descriptions = {
-            'CREATE': `Yeni malzeme eklendi: "${materialData.name}"`,
-            'UPDATE': `Malzeme güncellendi: "${materialData.name}"`,
-            'TRANSACTION': `Malzeme hareketi: "${materialData.name}" - ${changes?.type} ${changes?.quantity} ${materialData.unit}`
-        };
-
         await this.log({
             userId,
             userName,
             action,
-            entity: 'Material',
-            entityId: materialData.id,
-            changes,
-            description: descriptions[action] || `Malzeme işlemi: "${materialData.name}"`,
+            tableName: 'Materials',
+            recordId: materialData.id,
+            changes: changes || { name: materialData.name },
             req
         });
     }
@@ -110,21 +99,13 @@ class AuditLogger {
      * Ekipman işlemleri için kısayol
      */
     static async logEquipment(action, userId, userName, equipmentData, req, changes = null) {
-        const descriptions = {
-            'CREATE': `Yeni ekipman eklendi: "${equipmentData.name}"`,
-            'UPDATE': `Ekipman güncellendi: "${equipmentData.name}"`,
-            'DELETE': `Ekipman silindi: "${equipmentData.name}"`,
-            'ASSIGN': `Ekipman projeye atandı: "${equipmentData.name}"`
-        };
-
         await this.log({
             userId,
             userName,
             action,
-            entity: 'Equipment',
-            entityId: equipmentData.id,
-            changes,
-            description: descriptions[action],
+            tableName: 'Equipment',
+            recordId: equipmentData.id,
+            changes: changes || { name: equipmentData.name },
             req
         });
     }
@@ -133,20 +114,13 @@ class AuditLogger {
      * Giriş/Çıkış logları
      */
     static async logAuth(action, userId, userName, req, status = 'success') {
-        const descriptions = {
-            'LOGIN': `Kullanıcı giriş yaptı: ${userName}`,
-            'LOGOUT': `Kullanıcı çıkış yaptı: ${userName}`,
-            'REGISTER': `Yeni kullanıcı kaydı: ${userName}`
-        };
-
         await this.log({
             userId,
             userName,
             action,
-            entity: 'User',
-            entityId: userId,
-            description: descriptions[action],
-            status,
+            tableName: 'Users',
+            recordId: userId,
+            changes: { status },
             req
         });
     }
@@ -154,14 +128,13 @@ class AuditLogger {
     /**
      * Genel işlem logu
      */
-    static async logGeneric(action, entity, userId, userName, description, req, changes = null) {
+    static async logGeneric(action, tableName, userId, userName, changes, req) {
         await this.log({
             userId,
             userName,
             action,
-            entity,
+            tableName,
             changes,
-            description,
             req
         });
     }

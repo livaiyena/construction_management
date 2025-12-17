@@ -26,6 +26,7 @@ app.use('/api/attendance', require('./routes-raw/attendance'));
 app.use('/api/expenses', require('./routes-raw/expenses'));
 app.use('/api/materials', require('./routes-raw/materials'));
 app.use('/api/material-categories', require('./routes-raw/materialCategories'));
+app.use('/api/categories', require('./routes-raw/materialCategories')); // Alias for frontend compatibility
 app.use('/api/equipment', require('./routes-raw/equipment'));
 app.use('/api/equipment-types', require('./routes-raw/equipmentTypes'));
 app.use('/api/suppliers', require('./routes-raw/suppliers'));

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
+const AuditLogger = require('../utils/auditLogger');
 
 // GET /api/expenses - Tüm harcamaları listele
 router.get('/', auth, async (req, res) => {
@@ -93,7 +94,14 @@ router.post('/', auth, async (req, res) => {
             req.user.id
         ]);
 
-        res.status(201).json(result.rows[0]);
+        const newExpense = result.rows[0];
+        await AuditLogger.logGeneric('CREATE', 'Expenses', req.user.id, req.user.name, {
+            category: category,
+            amount: amount,
+            project: ProjectId
+        }, req);
+
+        res.status(201).json(newExpense);
     } catch (error) {
         console.error('Harcama ekleme hatası:', error);
         res.status(500).json({ message: 'Sunucu hatası', error: error.message });

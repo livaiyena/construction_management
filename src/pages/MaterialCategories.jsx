@@ -25,9 +25,8 @@ export default function MaterialCategories() {
             const data = await categoryService.getAll()
             setCategories(data)
         } catch (error) {
-            console.error(error)
-            // Silent fail if endpoint doesn't exist, generic toast
-            // showToast('Kategoriler yüklenemedi', 'error')
+            console.error('Kategori yükleme hatası:', error)
+            showToast('Kategoriler yüklenirken hata oluştu', 'error')
             setCategories([])
         } finally {
             setLoading(false)

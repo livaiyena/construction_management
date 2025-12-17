@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
+const AuditLogger = require('../utils/auditLogger');
 
 // GET /api/attendance - Tüm yoklama kayıtlarını listele (JOIN ile çalışan ve proje bilgisi)
 router.get('/', auth, async (req, res) => {
@@ -123,6 +124,16 @@ router.post('/', auth, async (req, res) => {
             req.user.id
         ]);
 
+        // Yoklama kaydı oluşturma işlemini logla
+        await AuditLogger.logGeneric(
+            'CREATE',
+            'Attendances',
+            req.user.id,
+            req.user.name,
+            { EmployeeId, ProjectId, date, status: status || 'Geldi' },
+            req
+        );
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Yoklama kaydı oluşturma hatası:', error);
@@ -135,6 +146,16 @@ router.put('/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
         const { EmployeeId, ProjectId, date, status, worked_hours, overtime_hours, notes } = req.body;
+
+        // Güncelleme öncesi mevcut kaydı al
+        const oldRecord = await query(
+            'SELECT * FROM "Attendances" WHERE "id" = $1 AND "userId" = $2',
+            [id, req.user.id]
+        );
+
+        if (oldRecord.rows.length === 0) {
+            return res.status(404).json({ message: 'Yoklama kaydı bulunamadı' });
+        }
 
         const updateQuery = `
             UPDATE "Attendances" 
@@ -156,9 +177,20 @@ router.put('/:id', auth, async (req, res) => {
             req.user.id
         ]);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'Yoklama kaydı bulunamadı' });
-        }
+        // Değişiklikleri logla
+        const changes = {
+            old: { EmployeeId: oldRecord.rows[0].EmployeeId, status: oldRecord.rows[0].status },
+            new: { EmployeeId, status }
+        };
+
+        await AuditLogger.logGeneric(
+            'UPDATE',
+            'Attendances',
+            req.user.id,
+            req.user.name,
+            changes,
+            req
+        );
 
         res.json(result.rows[0]);
     } catch (error) {
@@ -182,6 +214,17 @@ router.delete('/:id', auth, async (req, res) => {
         }
 
         await query('DELETE FROM "Attendances" WHERE "id" = $1', [id]);
+
+        // Silme işlemini logla
+        await AuditLogger.logGeneric(
+            'DELETE',
+            'Attendances',
+            req.user.id,
+            req.user.name,
+            { deletedId: id, EmployeeId: checkResult.rows[0].EmployeeId },
+            req
+        );
+
         res.json({ message: 'Yoklama kaydı silindi' });
     } catch (error) {
         console.error('Yoklama kaydı silme hatası:', error);

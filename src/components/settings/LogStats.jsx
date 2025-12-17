@@ -1,10 +1,10 @@
-import { Shield, Activity, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Shield, Activity, PlusCircle, Edit, Trash2 } from 'lucide-react'
 
-export default function LogStats({ logs }) {
-    const total = logs.length
-    const errors = logs.filter(l => l.type === 'error').length
-    const warnings = logs.filter(l => l.type === 'warning').length
-    const success = logs.filter(l => l.type === 'success').length
+export default function LogStats({ logs, total }) {
+    const displayTotal = total || logs.length
+    const creates = logs.filter(l => l.action === 'CREATE').length
+    const updates = logs.filter(l => l.action === 'UPDATE').length
+    const deletes = logs.filter(l => l.action === 'DELETE').length
 
     const StatCard = ({ label, value, icon: Icon, color, bg }) => (
         <div className={`p-4 rounded-xl border ${bg} border-opacity-50 flex items-center gap-4`}>
@@ -22,31 +22,31 @@ export default function LogStats({ logs }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
                 label="Toplam Kayıt"
-                value={total}
+                value={displayTotal}
                 icon={Activity}
                 color="text-slate-600"
                 bg="bg-slate-50 border-slate-200"
             />
             <StatCard
-                label="Başarılı İşlem"
-                value={success}
-                icon={CheckCircle2}
+                label="Oluşturma"
+                value={creates}
+                icon={PlusCircle}
                 color="text-emerald-600"
                 bg="bg-emerald-50 border-emerald-200"
             />
             <StatCard
-                label="Hatalar"
-                value={errors}
-                icon={Shield}
-                color="text-red-600"
-                bg="bg-red-50 border-red-200"
+                label="Güncelleme"
+                value={updates}
+                icon={Edit}
+                color="text-blue-600"
+                bg="bg-blue-50 border-blue-200"
             />
             <StatCard
-                label="Uyarılar"
-                value={warnings}
-                icon={AlertCircle}
-                color="text-amber-600"
-                bg="bg-amber-50 border-amber-200"
+                label="Silme"
+                value={deletes}
+                icon={Trash2}
+                color="text-red-600"
+                bg="bg-red-50 border-red-200"
             />
         </div>
     )

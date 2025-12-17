@@ -4,11 +4,19 @@ import api from '../services/api'
 import LogStats from '../components/settings/LogStats'
 import LogFilters from '../components/settings/LogFilters'
 import LogTable from '../components/settings/LogTable'
+import LogDetailModal from '../components/settings/LogDetailModal'
 import { useToast } from '../context/ToastContext'
 
 export default function SystemLogs() {
     const [logs, setLogs] = useState([])
     const [loading, setLoading] = useState(true)
+    const [selectedLog, setSelectedLog] = useState(null)
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 50,
+        total: 0,
+        pages: 0
+    })
     const [filters, setFilters] = useState({
         category: '',
         type: ''
@@ -18,39 +26,28 @@ export default function SystemLogs() {
     const fetchLogs = async () => {
         setLoading(true)
         try {
-            const res = await api.get('/audit')
-            // Backend'den gelen veri yapısı: { logs: [], pagination: {} }
+            const params = {
+                page: pagination.page,
+                limit: pagination.limit
+            }
+            
+            // Backend filtreleri ekle
+            if (filters.category) {
+                params.tableName = filters.category
+            }
+            if (filters.type) {
+                params.action = filters.type
+            }
+
+            const res = await api.get('/audit', { params })
+            
             if (res.data && res.data.logs) {
-                const mappedLogs = res.data.logs.map(log => ({
-                    id: log.id,
-                    timestamp: log.createdAt,
-                    category: log.tableName,
-                    entity: log.tableName,
-                    description: `${log.action} - ${log.tableName} (ID: ${log.recordId})`,
-                    message: `${log.action} - ${log.tableName}`,
-                    type: log.action,
-                    status: log.action,
-                    user: log.User?.name || log.userName || 'Sistem',
-                    ipAddress: log.ipAddress,
-                    changes: log.changes
-                }))
-                setLogs(mappedLogs)
-            } else if (Array.isArray(res.data)) {
-                // Fallback for array response
-                const mappedLogs = res.data.map(log => ({
-                    id: log.id,
-                    timestamp: log.createdAt,
-                    category: log.tableName,
-                    entity: log.tableName,
-                    description: `${log.action} - ${log.tableName} (ID: ${log.recordId})`,
-                    message: `${log.action} - ${log.tableName}`,
-                    type: log.action,
-                    status: log.action,
-                    user: log.User?.name || log.userName || 'Sistem',
-                    ipAddress: log.ipAddress,
-                    changes: log.changes
-                }))
-                setLogs(mappedLogs)
+                setLogs(res.data.logs)
+                setPagination({
+                    ...pagination,
+                    total: res.data.pagination.total,
+                    pages: res.data.pagination.pages
+                })
             }
         } catch (error) {
             console.error('Logs fetch error:', error)
@@ -62,27 +59,17 @@ export default function SystemLogs() {
 
     useEffect(() => {
         fetchLogs()
-    }, [])
+    }, [filters.category, filters.type, pagination.page])
 
-    // Filter logs based on selection
-    const filteredLogs = useMemo(() => {
-        let result = [...logs]
+    const handleFilterChange = (newFilters) => {
+        setFilters(newFilters)
+        setPagination({ ...pagination, page: 1 }) // Reset to first page on filter change
+    }
 
-        if (filters.category) {
-            // Backend 'entity' kullanıyor, frontend filtresi 'category' gönderiyor. Uyumluluk lazım.
-            // LogFilters componentine bakılmalı. Muhtemelen orada entity seçiliyor.
-            result = result.filter(log => log.entity === filters.category)
-        }
-
-        if (filters.type) {
-            // Backend 'action' kullanıyor (CREATE, UPDATE vs), frontend 'type' (success/error vs) mı?
-            // AuditLog modelinde 'status' ve 'action' var.
-            // Genelde kullanıcı işlem tipini filtrelemek ister.
-            result = result.filter(log => log.action === filters.type || log.status === filters.type)
-        }
-
-        return result
-    }, [logs, filters])
+    const handleClearFilters = () => {
+        setFilters({ category: '', type: '' })
+        setPagination({ ...pagination, page: 1 })
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in">
@@ -107,18 +94,53 @@ export default function SystemLogs() {
                 </div>
             </div>
 
-            {/* Stats Module - Backend verisine göre adapte edilecek */}
-            <LogStats logs={logs} />
+            {/* Stats Module */}
+            <LogStats logs={logs} total={pagination.total} />
 
             {/* Filters Module */}
             <LogFilters
                 filters={filters}
-                setFilters={setFilters}
-                onClear={() => setFilters({ category: '', type: '' })}
+                setFilters={handleFilterChange}
+                onClear={handleClearFilters}
             />
 
             {/* Logs Table Module */}
-            <LogTable logs={filteredLogs} loading={loading} />
+            <LogTable 
+                logs={logs} 
+                loading={loading} 
+                onRowClick={setSelectedLog}
+            />
+
+            {/* Log Detail Modal */}
+            {selectedLog && (
+                <LogDetailModal 
+                    log={selectedLog} 
+                    onClose={() => setSelectedLog(null)}
+                />
+            )}
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+                <div className="flex justify-center items-center gap-2">
+                    <button
+                        onClick={() => setPagination({ ...pagination, page: Math.max(1, pagination.page - 1) })}
+                        disabled={pagination.page === 1}
+                        className="px-4 py-2 btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Önceki
+                    </button>
+                    <span className="text-sm text-slate-600">
+                        Sayfa {pagination.page} / {pagination.pages} ({pagination.total} kayıt)
+                    </span>
+                    <button
+                        onClick={() => setPagination({ ...pagination, page: Math.min(pagination.pages, pagination.page + 1) })}
+                        disabled={pagination.page === pagination.pages}
+                        className="px-4 py-2 btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Sonraki
+                    </button>
+                </div>
+            )}
         </div>
     )
 }

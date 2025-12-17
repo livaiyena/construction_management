@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/db-raw');
+const AuditLogger = require('../utils/auditLogger');
 
 // Register
 router.post('/register', async (req, res) => {
@@ -35,6 +36,9 @@ router.post('/register', async (req, res) => {
         
         const result = await query(insertQuery, [name, email, hashedPassword, 'admin']);
         const newUser = result.rows[0];
+
+        // Log registration
+        await AuditLogger.logAuth('REGISTER', newUser.id, newUser.name, req);
 
         // Create token
         const token = jwt.sign(
@@ -95,11 +99,7 @@ router.post('/login', async (req, res) => {
         );
 
         // Log login
-        const logQuery = `
-            INSERT INTO "AuditLogs" ("userId", "userName", "action", "tableName", "timestamp", "createdAt")
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `;
-        await query(logQuery, [user.id, user.name, 'LOGIN', 'Users']);
+        await AuditLogger.logAuth('LOGIN', user.id, user.name, req);
 
         res.json({
             message: 'Giriş başarılı',
@@ -175,6 +175,19 @@ router.post('/reset-password-direct', async (req, res) => {
     } catch (error) {
         console.error('Reset password error:', error);
         res.status(500).json({ message: 'Şifre sıfırlama başarısız', error: error.message });
+    }
+});
+
+// POST /logout - Kullanıcı çıkışı
+router.post('/logout', auth, async (req, res) => {
+    try {
+        // Çıkış işlemini logla
+        await AuditLogger.logAuth('LOGOUT', req.user.id, req.user.name, req);
+        
+        res.json({ message: 'Başarıyla çıkış yapıldı' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ message: 'Çıkış yapılırken hata oluştu', error: error.message });
     }
 });
 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
+const AuditLogger = require('../utils/auditLogger');
 
 // GET /api/projects - Tüm projeleri listele
 router.get('/', auth, async (req, res) => {
@@ -43,25 +44,7 @@ router.post('/', auth, async (req, res) => {
         const newProject = result.rows[0];
 
         // Audit Log kaydet
-        const auditQuery = `
-            INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        `;
-        
-        await query(auditQuery, [
-            'CREATE',
-            'Projects',
-            newProject.id,
-            req.user.id,
-            req.user.name || 'Admin',
-            JSON.stringify({ 
-                message: 'Yeni proje oluşturuldu',
-                data: newProject 
-            }),
-            req.ip,
-            req.get('user-agent')
-        ]);
+        await AuditLogger.logProject('CREATE', req.user.id, req.user.name, newProject, req);
 
         res.json(newProject);
     } catch (err) {
@@ -125,30 +108,10 @@ router.put('/:id', auth, async (req, res) => {
             req.user.id
         ]);
 
-        // Audit Log kaydet (değişiklik varsa)
-        if (changes.length > 0) {
-            const auditQuery = `
-                INSERT INTO "AuditLogs" 
-                ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-            `;
-            
-            await query(auditQuery, [
-                'UPDATE',
-                'Projects',
-                id,
-                req.user.id,
-                req.user.name || 'Admin',
-                JSON.stringify({ 
-                    message: 'Proje güncellendi',
-                    changes: changes 
-                }),
-                req.ip,
-                req.get('user-agent')
-            ]);
-        }
+        const updatedProject = result.rows[0];
+        await AuditLogger.logProject('UPDATE', req.user.id, req.user.name, updatedProject, req, { changes });
 
-        res.json(result.rows[0]);
+        res.json(updatedProject);
     } catch (err) {
         console.error('Proje güncelleme hatası:', err);
         res.status(500).json({ message: err.message });
@@ -175,26 +138,8 @@ router.delete('/:id', auth, async (req, res) => {
         // Projeyi sil
         await query('DELETE FROM "Projects" WHERE "id" = $1', [id]);
 
-        // Audit Log kaydet
-        const auditQuery = `
-            INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        `;
-        
-        await query(auditQuery, [
-            'DELETE',
-            'Projects',
-            id,
-            req.user.id,
-            req.user.name || 'Admin',
-            JSON.stringify({ 
-                message: 'Proje silindi',
-                data: project 
-            }),
-            req.ip,
-            req.get('user-agent')
-        ]);
+        await query('DELETE FROM "Projects" WHERE "id" = $1', [id]);
+        await AuditLogger.logProject('DELETE', req.user.id, req.user.name, project, req);
 
         res.json({ message: 'Proje silindi' });
     } catch (err) {

@@ -32,13 +32,14 @@ export default function Warehouse() {
                 setMaterials(materialsData)
                 setCategories(categoriesData)
             } catch (error) {
-                showToast('Veriler yüklenemedi', 'error')
+                console.error('Veri yükleme hatası:', error)
+                showToast('Veriler yüklenirken hata oluştu', 'error')
             } finally {
                 setLoading(false)
             }
         }
         loadData()
-    }, [])
+    }, [showToast])
 
     const fetchMaterials = async () => {
         try {

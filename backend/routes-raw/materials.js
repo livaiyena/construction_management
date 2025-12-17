@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
+const AuditLogger = require('../utils/auditLogger');
 
 // GET /api/materials - Tüm malzemeleri listele
 router.get('/', auth, async (req, res) => {
@@ -67,7 +68,10 @@ router.post('/', auth, async (req, res) => {
             req.user.id
         ]);
 
-        res.json(result.rows[0]);
+        const newMaterial = result.rows[0];
+        await AuditLogger.logMaterial('CREATE', req.user.id, req.user.name, newMaterial, req);
+
+        res.json(newMaterial);
     } catch (err) {
         console.error('Malzeme ekleme hatası:', err);
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -108,7 +112,13 @@ router.put('/:id', auth, async (req, res) => {
             id
         ]);
 
-        res.json(result.rows[0]);
+        const updatedMaterial = result.rows[0];
+        await AuditLogger.logMaterial('UPDATE', req.user.id, req.user.name, updatedMaterial, req, {
+            old: oldMaterial,
+            new: updatedMaterial
+        });
+
+        res.json(updatedMaterial);
     } catch (err) {
         console.error('Malzeme güncelleme hatası:', err);
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -126,7 +136,10 @@ router.delete('/:id', auth, async (req, res) => {
             return res.status(404).json({ message: 'Malzeme bulunamadı' });
         }
 
+        const material = checkResult.rows[0];
         await query('DELETE FROM "Materials" WHERE "id" = $1', [id]);
+        await AuditLogger.logMaterial('DELETE', req.user.id, req.user.name, material, req);
+
         res.json({ message: 'Malzeme silindi' });
     } catch (err) {
         console.error('Malzeme silme hatası:', err);

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
+const AuditLogger = require('../utils/auditLogger');
 
 // GET /api/employees - Tüm çalışanları listele (JOIN ile proje ve rol bilgisi)
 router.get('/', auth, async (req, res) => {
@@ -81,24 +82,7 @@ router.post('/', auth, async (req, res) => {
         ]);
 
         const newEmployee = result.rows[0];
-
-        // Audit Log
-        const auditQuery = `
-            INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        `;
-        
-        await query(auditQuery, [
-            'CREATE',
-            'Employees',
-            newEmployee.id,
-            req.user.id,
-            req.user.name || 'Admin',
-            JSON.stringify({ message: 'Yeni çalışan eklendi', data: newEmployee }),
-            req.ip,
-            req.get('user-agent')
-        ]);
+        await AuditLogger.logEmployee('CREATE', req.user.id, req.user.name, newEmployee, req);
 
         res.json(newEmployee);
     } catch (err) {
@@ -162,27 +146,12 @@ router.put('/:id', auth, async (req, res) => {
             req.user.id
         ]);
 
-        // Audit Log (değişiklik varsa)
-        if (changes.length > 0) {
-            const auditQuery = `
-                INSERT INTO "AuditLogs" 
-                ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-            `;
-            
-            await query(auditQuery, [
-                'UPDATE',
-                'Employees',
-                id,
-                req.user.id,
-                req.user.name || 'Admin',
-                JSON.stringify({ message: 'Çalışan güncellendi', changes: changes }),
-                req.ip,
-                req.get('user-agent')
-            ]);
-        }
+        const updatedEmployee = result.rows[0];
+        await AuditLogger.logEmployee('UPDATE', req.user.id, req.user.name, updatedEmployee, req, {
+            changes: changes
+        });
 
-        res.json(result.rows[0]);
+        res.json(updatedEmployee);
     } catch (err) {
         console.error('Çalışan güncelleme hatası:', err);
         res.status(500).json({ message: err.message });
@@ -206,24 +175,7 @@ router.delete('/:id', auth, async (req, res) => {
         const employee = checkResult.rows[0];
 
         await query('DELETE FROM "Employees" WHERE "id" = $1', [id]);
-
-        // Audit Log
-        const auditQuery = `
-            INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        `;
-        
-        await query(auditQuery, [
-            'DELETE',
-            'Employees',
-            id,
-            req.user.id,
-            req.user.name || 'Admin',
-            JSON.stringify({ message: 'Çalışan silindi', data: employee }),
-            req.ip,
-            req.get('user-agent')
-        ]);
+        await AuditLogger.logEmployee('DELETE', req.user.id, req.user.name, employee, req);
 
         res.json({ message: 'Çalışan silindi' });
     } catch (err) {

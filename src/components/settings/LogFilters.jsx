@@ -14,14 +14,16 @@ export default function LogFilters({ filters, setFilters, onClear }) {
                     value={filters.category}
                     onChange={(e) => setFilters({ ...filters, category: e.target.value })}
                 >
-                    <option value="">Tüm Kategoriler</option>
-                    <option value="PROJECT">Projeler</option>
-                    <option value="EMPLOYEE">Çalışanlar</option>
-                    <option value="ATTENDANCE">Yoklama</option>
-                    <option value="EXPENSE">Harcamalar</option>
-                    <option value="INVENTORY">Envanter</option>
-                    <option value="REPORT">Raporlar</option>
-                    <option value="SYSTEM">Sistem</option>
+                    <option value="">Tüm Tablolar</option>
+                    <option value="Projects">Projeler</option>
+                    <option value="Employees">Çalışanlar</option>
+                    <option value="Attendance">Yoklama</option>
+                    <option value="Expenses">Harcamalar</option>
+                    <option value="Materials">Malzemeler</option>
+                    <option value="Equipment">Ekipmanlar</option>
+                    <option value="Suppliers">Tedarikçiler</option>
+                    <option value="Users">Kullanıcılar</option>
+                    <option value="Roles">Roller</option>
                 </select>
 
                 <select
@@ -29,11 +31,12 @@ export default function LogFilters({ filters, setFilters, onClear }) {
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                 >
-                    <option value="">Tüm Durumlar</option>
-                    <option value="success">Başarılı</option>
-                    <option value="error">Hata</option>
-                    <option value="warning">Uyarı</option>
-                    <option value="info">Bilgi</option>
+                    <option value="">Tüm İşlemler</option>
+                    <option value="CREATE">Oluşturma</option>
+                    <option value="UPDATE">Güncelleme</option>
+                    <option value="DELETE">Silme</option>
+                    <option value="LOGIN">Giriş</option>
+                    <option value="LOGOUT">Çıkış</option>
                 </select>
 
                 {(filters.category || filters.type) && (

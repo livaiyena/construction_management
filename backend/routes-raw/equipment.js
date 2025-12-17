@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db-raw');
 const auth = require('../middleware/auth');
+const AuditLogger = require('../utils/auditLogger');
 
 // GET /api/equipment - Tüm ekipmanları listele
 router.get('/', auth, async (req, res) => {
@@ -75,24 +76,7 @@ router.post('/', auth, async (req, res) => {
         ]);
 
         const newEquipment = result.rows[0];
-
-        // Audit Log
-        const auditQuery = `
-            INSERT INTO "AuditLogs" 
-            ("action", "tableName", "recordId", "userId", "userName", "changes", "ipAddress", "userAgent", "createdAt")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        `;
-        
-        await query(auditQuery, [
-            'CREATE',
-            'Equipment',
-            newEquipment.id,
-            req.user.id,
-            req.user.name || 'Admin',
-            JSON.stringify({ message: 'Yeni ekipman eklendi', data: newEquipment }),
-            req.ip,
-            req.get('user-agent')
-        ]);
+        await AuditLogger.logEquipment('CREATE', req.user.id, req.user.name, newEquipment, req);
 
         res.json(newEquipment);
     } catch (err) {
