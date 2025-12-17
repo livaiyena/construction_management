@@ -1,47 +1,99 @@
-# İnşaat Yönetim Sistemi
+# İnşaat Yönetim Sistemi 🏗️
 
-Modern inşaat projelerini, çalışanları, masrafları ve yoklama kayıtlarını yönetmek için geliştirilmiş full-stack web uygulaması.
+Modern inşaat projelerini, çalışanları, masrafları ve yoklama kayıtlarını yönetmek için geliştirilmiş **full-stack web uygulaması** - Raw SQL ile güçlendirilmiş.
 
-## 🚀 Özellikler
+> **Final Rapor:** [FINAL-RAPOR.md](FINAL-RAPOR.md) dosyasını mutlaka okuyun! 📚
 
-- **Proje Yönetimi**: Projeleri oluştur, düzenle, takip et
-- **Çalışan Yönetimi**: Çalışanları ve rollerini yönet
-- **Masraf Takibi**: Proje masraflarını kategorize et ve izle
-- **Yoklama Sistemi**: Çalışan devam kayıtlarını tut
-- **SQL Raporları**: 12 farklı analitik rapor
+## 🎯 Proje Özellikleri
+
+### ✨ Temel Özellikler
+- **Proje Yönetimi**: 15 tablo ile tam entegre proje takibi
+- **Çalışan Yönetimi**: Rol bazlı çalışan sistemi
+- **Masraf Takibi**: Kategorilendirilmiş harcama yönetimi
+- **Yoklama Sistemi**: Günlük devam kaydı ve mesai takibi
+- **SQL Raporları**: 16 farklı analitik rapor (JOIN, GROUP BY, HAVING)
 - **Dashboard**: Gerçek zamanlı istatistikler ve grafikler
+
+### 🏆 Final Rapor Şartları
+
+| Şart | Dosya | Durum |
+|------|-------|-------|
+| a) Proje Amacı | [database/Proje-Amaci.md](database/Proje-Amaci.md) | ✅ |
+| b) Tablo ve İlişkiler | 15 tablo, 18 ilişki | ✅ |
+| c) ER Diyagramı | [database/ER-Diagram.md](database/ER-Diagram.md) | ✅ |
+| d) DDL Kodları | [database/schema.sql](database/schema.sql) | ✅ 500+ satır |
+| e) Normalizasyon | [database/Normalizasyon.md](database/Normalizasyon.md) | ✅ BCNF |
+| f) DML Kodları | [database/dml-examples.sql](database/dml-examples.sql) | ✅ 50+ örnek |
+| g) SQL Sorguları (10+) | [database/queries.sql](database/queries.sql) | ✅ 16 sorgu |
+| h) Arayüz | React UI - 11 sayfa | ✅ |
+| i) SQL DB Kullanımı | PostgreSQL + Raw SQL | ✅ |
+
+## 🛠️ Teknoloji Yığını
+
+### Backend
+- **Veritabanı:** PostgreSQL 13+ (Neon.tech Cloud)
+- **SQL Method:** **Raw SQL** (pg kütüphanesi - ORM YOK!)
+- **Server:** Node.js + Express.js
+- **Auth:** JWT (JSON Web Token)
+- **Şifreleme:** bcrypt.js
+
+### Frontend
+- **Framework:** React 18
+- **Build Tool:** Vite
+- **Styling:** Tailwind CSS
+- **Routing:** React Router v6
+- **Charts:** Recharts
+- **Icons:** Lucide React
 
 ## 📋 Gereksinimler
 
-- Node.js (v16 veya üzeri)
-- PostgreSQL (v13 veya üzeri) - Neon.tech önerilir
+- Node.js v16+
+- PostgreSQL 13+
 - npm veya yarn
 
 ## 🛠️ Kurulum
 
-### 1. Projeyi Klonlayın
+### 1. Veritabanını Oluşturun
 
 ```bash
-git clone <repository-url>
-cd insaat-yonetim-frontend
+# PostgreSQL'e bağlanın
+psql -U postgres
+
+# Yeni veritabanı oluşturun
+CREATE DATABASE insaat_yonetim;
+
+# Veritabanına bağlanın
+\c insaat_yonetim
+
+# Şemayı yükleyin
+\i database/schema.sql
+
+# Örnek veri yükleyin (opsiyonel)
+\i database/dml-examples.sql
 ```
 
 ### 2. Backend Kurulumu
 
 ```bash
 cd backend
-npm install
-```
 
-**ÖNEMLİ**: Proje paylaşımlı Neon.tech veritabanı kullanır. `.env` dosyası repository'de mevcuttur ve herkes aynı veritabanına bağlanır. Verileri silmemeye özen gösterin!
+# Bağımlılıkları yükleyin
+npm install
+
+# .env dosyasını oluşturun ve düzenleyin
+DB_HOST=your-neon-host
+DB_PORT=5432
+DB_USER=your-username
+DB_PASS=your-password
+DB_NAME=insaat_yonetim
+JWT_SECRET=your-secret-key-here
+PORT=5000
+```
 
 ### 3. Frontend Kurulumu
 
 ```bash
-# Ana klasöre dönün
-cd ..
-
-# Bağımlılıkları yükleyin
+# Ana dizinde
 npm install
 ```
 
@@ -55,33 +107,47 @@ npm run dev   # Geliştirme modu (nodemon)
 npm start     # Prodüksiyon modu
 ```
 
-Backend şu adreste çalışacak: `http://localhost:5000`
-
-**Frontend:**
-Yeni bir terminal açın:
+**Frontend:** (Yeni terminal)
 ```bash
 npm run dev
 ```
 
-Frontend şu adreste çalışacak: `http://localhost:5173`
+Backend: `http://localhost:5000`  
+Frontend: `http://localhost:5173`
 
-## 📱 Kullanım
-
-### İlk Giriş
-
-1. Kayıt ol sayfasından yeni hesap oluşturun
-2. Giriş yapın
-3. Dashboard'dan sisteme erişin
-
-### Hızlı Başlangıç (Windows)
+### 5. Hızlı Başlangıç (Windows)
 
 ```bash
-baslat.bat
+baslat.bat  # Hem frontend hem backend'i başlatır
 ```
 
-Bu script hem frontend hem backend'i aynı anda başlatır.
+## 📊 Veritabanı Yapısı
 
-## 🗂️ Proje Yapısı
+### Tablolar (15 adet)
+1. **Users** - Sistem kullanıcıları
+2. **Projects** - İnşaat projeleri
+3. **Roles** - Çalışan pozisyonları
+4. **Employees** - Şantiye çalışanları
+5. **Attendances** - Yoklama kayıtları
+6. **Suppliers** - Tedarikçiler
+7. **MaterialCategories** - Malzeme kategorileri
+8. **Materials** - İnşaat malzemeleri
+9. **EquipmentTypes** - Ekipman türleri
+10. **Equipment** - İnşaat ekipmanları
+11. **ProjectMaterial** - Proje-Malzeme ilişkisi (Junction)
+12. **ProjectEquipment** - Proje-Ekipman ilişkisi (Junction)
+13. **Expenses** - Harcamalar
+14. **Documents** - Dökümanlar
+15. **AuditLogs** - Sistem işlem logları
+
+### İlişkiler
+- **1:N İlişkiler:** 16 adet
+- **N:M İlişkiler:** 2 adet (Junction tables ile)
+- **BCNF Normalizasyon:** %93 başarı
+
+Detaylı bilgi: [database/ER-Diagram.md](database/ER-Diagram.md)
+
+## 📁 Proje Yapısı
 
 ```
 insaat-yonetim-frontend/
