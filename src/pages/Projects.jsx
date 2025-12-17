@@ -31,6 +31,62 @@ export default function Projects() {
     const { showToast } = useToast()
     const { addNotification } = useNotification()
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 25
+
+    // Filtrelenmiş projeler
+    const filteredProjects = projects.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.district.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.address && p.address.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+
+    // Paginated data
+    const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const paginatedProjects = filteredProjects.slice(startIndex, endIndex)
+
+    // Akıllı pagination gösterimi için sayfa numaralarını hesapla
+    const getPageNumbers = () => {
+        const pages = []
+        const maxPagesToShow = 7
+        
+        if (totalPages <= maxPagesToShow) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i)
+            }
+        } else {
+            pages.push(1)
+            
+            if (currentPage > 3) {
+                pages.push('...')
+            }
+            
+            const start = Math.max(2, currentPage - 1)
+            const end = Math.min(totalPages - 1, currentPage + 1)
+            
+            for (let i = start; i <= end; i++) {
+                pages.push(i)
+            }
+            
+            if (currentPage < totalPages - 2) {
+                pages.push('...')
+            }
+            
+            pages.push(totalPages)
+        }
+        
+        return pages
+    }
+
+    // Reset to page 1 when search changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchTerm])
+
     useEffect(() => {
         fetchProjects()
     }, [])
@@ -224,12 +280,7 @@ export default function Projects() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    projects.filter(p =>
-                                        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        p.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        p.district.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        (p.address && p.address.toLowerCase().includes(searchTerm.toLowerCase()))
-                                    ).map((proj) => (
+                                    paginatedProjects.map((proj) => (
                                         <tr
                                             key={proj.id}
                                             className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
@@ -292,6 +343,56 @@ export default function Projects() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination Controls */}
+                    {!loading && filteredProjects.length > itemsPerPage && (
+                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                            <div className="text-sm text-slate-600">
+                                <span className="font-semibold text-slate-800">{startIndex + 1}</span> - <span className="font-semibold text-slate-800">{Math.min(endIndex, filteredProjects.length)}</span> arası gösteriliyor (Toplam: <span className="font-semibold text-slate-800">{filteredProjects.length}</span>)
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Önceki
+                                </button>
+                                <div className="flex items-center gap-1">
+                                    {getPageNumbers().map((page, index) => (
+                                        page === '...' ? (
+                                            <span key={`ellipsis-${index}`} className="px-2 text-slate-400">...</span>
+                                        ) : (
+                                            <button
+                                                key={page}
+                                                onClick={() => setCurrentPage(page)}
+                                                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                                                    currentPage === page
+                                                        ? 'bg-primary-600 text-white font-semibold'
+                                                        : 'border border-slate-300 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        )
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Sonraki
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {!loading && filteredProjects.length > 0 && filteredProjects.length <= itemsPerPage && (
+                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 text-sm text-slate-600">
+                            Toplam <span className="font-semibold text-slate-800">{filteredProjects.length}</span> kayıt gösteriliyor
+                        </div>
+                    )}
                 </div>
 
                 {/* Modal Overlay */}

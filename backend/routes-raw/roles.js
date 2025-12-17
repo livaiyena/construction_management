@@ -17,18 +17,18 @@ router.get('/', auth, async (req, res) => {
 // POST /api/roles - Yeni rol ekle
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, description } = req.body;
+        const { name, default_daily_rate } = req.body;
         
         const insertQuery = `
             INSERT INTO "Roles" 
-            ("name", "description", "userId", "createdAt", "updatedAt")
+            ("name", "default_daily_rate", "userId", "createdAt", "updatedAt")
             VALUES ($1, $2, $3, NOW(), NOW())
             RETURNING *
         `;
         
         const result = await query(insertQuery, [
             name,
-            description || null,
+            parseFloat(default_daily_rate) || 0,
             req.user.id
         ]);
 
@@ -43,16 +43,16 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description } = req.body;
+        const { name, default_daily_rate } = req.body;
 
         const updateQuery = `
             UPDATE "Roles" 
-            SET "name" = $1, "description" = $2, "updatedAt" = NOW()
+            SET "name" = $1, "default_daily_rate" = $2, "updatedAt" = NOW()
             WHERE "id" = $3 AND "userId" = $4
             RETURNING *
         `;
 
-        const result = await query(updateQuery, [name, description, id, req.user.id]);
+        const result = await query(updateQuery, [name, parseFloat(default_daily_rate) || 0, id, req.user.id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Rol bulunamadı' });

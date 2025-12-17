@@ -16,14 +16,32 @@ export default function Attendance() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [editId, setEditId] = useState(null)
-    const [filterProject, setFilterProject] = useState('')
-    const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '')
-    const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0])
+    
+    // Bugünün tarihini local timezone'da hesapla (UTC değil)
+    const getTodayDate = () => {
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = String(today.getMonth() + 1).padStart(2, '0')
+        const day = String(today.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    }
+    
+    // Yeni temiz filtre yapısı
+    const [filters, setFilters] = useState(() => {
+        const todayDate = getTodayDate()
+        return {
+            dateMode: 'today',
+            startDate: todayDate,
+            endDate: todayDate,
+            projectId: '',
+            status: searchParams.get('status') || ''
+        }
+    })
 
     const [formData, setFormData] = useState({
         EmployeeId: '',
         ProjectId: '',
-        date: new Date().toISOString().split('T')[0],
+        date: getTodayDate(),
         status: 'Geldi',
         worked_hours: 8.0,
         overtime_hours: 0,
@@ -45,6 +63,33 @@ export default function Attendance() {
                 api.get('/employees'),
                 api.get('/projects')
             ])
+            
+            // Debug: Veri formatını ve filtreleme mantığını kontrol et
+            if (attRes.data && attRes.data.length > 0) {
+                const sample = attRes.data[0]
+                const today = new Date()
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                
+                console.log('🔍 YOKLAMA DEBUG:', {
+                    bugün: todayStr,
+                    örnek_kayıt_date: sample.date,
+                    örnek_kayıt_type: typeof sample.date,
+                    örnek_kayıt_isDate: sample.date instanceof Date,
+                    toplam_kayıt: attRes.data.length,
+                    bugünün_kayıtları: attRes.data.filter(a => {
+                        let aDate = a.date
+                        if (aDate instanceof Date) {
+                            aDate = `${aDate.getFullYear()}-${String(aDate.getMonth() + 1).padStart(2, '0')}-${String(aDate.getDate()).padStart(2, '0')}`
+                        } else if (typeof aDate === 'string' && aDate.includes('T')) {
+                            aDate = aDate.split('T')[0]
+                        } else if (typeof aDate === 'string') {
+                            aDate = aDate.substring(0, 10)
+                        }
+                        return aDate === todayStr
+                    }).length
+                })
+            }
+            
             setAttendances(attRes.data)
             setEmployees(empRes.data)
             setProjects(projRes.data)
@@ -60,7 +105,7 @@ export default function Attendance() {
         setFormData({
             EmployeeId: '',
             ProjectId: '',
-            date: new Date().toISOString().split('T')[0],
+            date: getTodayDate(),
             status: 'Geldi',
             worked_hours: 8.0,
             overtime_hours: 0,
@@ -131,6 +176,163 @@ export default function Attendance() {
         }
     }
 
+    // Tarih filtresi uygulama fonksiyonu - useEffect'ten önce tanımlanmalı
+    const applyDateFilter = (mode) => {
+        const today = new Date()
+        const formatDate = (date) => {
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            return `${year}-${month}-${day}`
+        }
+        
+        switch (mode) {
+            case 'today':
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'today',
+                    startDate: formatDate(today),
+                    endDate: formatDate(today)
+                }))
+                break
+                
+            case 'yesterday':
+                const yesterday = new Date(today)
+                yesterday.setDate(yesterday.getDate() - 1)
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'yesterday',
+                    startDate: formatDate(yesterday),
+                    endDate: formatDate(yesterday)
+                }))
+                break
+                
+            case 'week':
+                // Bu hafta (Pazartesi - Pazar)
+                const dayOfWeek = today.getDay()
+                const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+                const monday = new Date(today)
+                monday.setDate(today.getDate() - diff)
+                const sunday = new Date(monday)
+                sunday.setDate(monday.getDate() + 6)
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'week',
+                    startDate: formatDate(monday),
+                    endDate: formatDate(sunday)
+                }))
+                break
+                
+            case 'last7':
+                const weekAgo = new Date(today)
+                weekAgo.setDate(today.getDate() - 6)
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'last7',
+                    startDate: formatDate(weekAgo),
+                    endDate: formatDate(today)
+                }))
+                break
+                
+            case 'month':
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'month',
+                    startDate: formatDate(firstDay),
+                    endDate: formatDate(lastDay)
+                }))
+                break
+                
+            case 'all':
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'all',
+                    startDate: '',
+                    endDate: ''
+                }))
+                break
+                
+            case 'custom':
+                setFilters(prev => ({
+                    ...prev,
+                    dateMode: 'custom'
+                }))
+                break
+                
+            default:
+                break
+        }
+    }
+
+    // Filtrelenmiş yoklama listesi
+    const filteredAttendances = attendances.filter(attendance => {
+        // Proje filtresi
+        if (filters.projectId && attendance.ProjectId !== parseInt(filters.projectId)) {
+            return false
+        }
+        
+        // Durum filtresi
+        if (filters.status) {
+            if (filters.status === 'İzinli') {
+                if (attendance.status !== 'İzinli' && attendance.status !== 'Raporlu') {
+                    return false
+                }
+            } else if (attendance.status !== filters.status) {
+                return false
+            }
+        }
+        
+        // Tarih filtresi - UTC timezone offset düzeltmesi
+        if (filters.dateMode !== 'all' && attendance.date) {
+            let attendanceDate
+            
+            if (attendance.date instanceof Date) {
+                // Date object ise local timezone kullan
+                const d = attendance.date
+                attendanceDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            } else if (typeof attendance.date === 'string') {
+                // String ise - UTC offset'i düzelt
+                const d = new Date(attendance.date)
+                // Local timezone'da tarihi al (UTC değil!)
+                attendanceDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            } else {
+                // Diğer tipler için string'e çevir
+                const d = new Date(attendance.date)
+                attendanceDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            }
+            
+            if (filters.startDate && filters.endDate) {
+                if (attendanceDate < filters.startDate || attendanceDate > filters.endDate) {
+                    return false
+                }
+            } else if (filters.startDate) {
+                if (attendanceDate < filters.startDate) {
+                    return false
+                }
+            } else if (filters.endDate) {
+                if (attendanceDate > filters.endDate) {
+                    return false
+                }
+            }
+        }
+        
+        return true
+    })
+
+    // Tüm filtreleri temizle
+    const clearFilters = () => {
+        const todayDate = getTodayDate()
+        setFilters({
+            dateMode: 'today',
+            startDate: todayDate,
+            endDate: todayDate,
+            projectId: '',
+            status: ''
+        })
+    }
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'Geldi': return 'bg-green-100 text-green-700'
@@ -141,24 +343,55 @@ export default function Attendance() {
         }
     }
 
-    const filteredAttendances = attendances.filter(a => {
-        let matches = true
-        if (filterProject) {
-            matches = matches && a.ProjectId === parseInt(filterProject)
-        }
-        if (filterStatus) {
-            // İzinli filtresi hem İzinli hem Raporlu'yu kapsasın
-            if (filterStatus === 'İzinli') {
-                matches = matches && (a.status === 'İzinli' || a.status === 'Raporlu')
-            } else {
-                matches = matches && a.status === filterStatus
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 25
+
+    // Paginated data
+    const totalPages = Math.ceil(filteredAttendances.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const paginatedAttendances = filteredAttendances.slice(startIndex, endIndex)
+    // Akıllı pagination gösterimi için sayfa numaralarını hesapla
+    const getPageNumbers = () => {
+        const pages = []
+        const maxPagesToShow = 7 // Gösterilecek maksimum sayfa sayısı
+        
+        if (totalPages <= maxPagesToShow) {
+            // Tüm sayfaları göster
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i)
             }
+        } else {
+            // İlk sayfa
+            pages.push(1)
+            
+            if (currentPage > 3) {
+                pages.push('...')
+            }
+            
+            // Mevcut sayfa etrafındaki sayfalar
+            const start = Math.max(2, currentPage - 1)
+            const end = Math.min(totalPages - 1, currentPage + 1)
+            
+            for (let i = start; i <= end; i++) {
+                pages.push(i)
+            }
+            
+            if (currentPage < totalPages - 2) {
+                pages.push('...')
+            }
+            
+            // Son sayfa
+            pages.push(totalPages)
         }
-        if (filterDate) {
-            matches = matches && a.date === filterDate
-        }
-        return matches
-    })
+        
+        return pages
+    }
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [filters.dateMode, filters.projectId, filters.status, filters.startDate, filters.endDate])
 
     return (
         <div className="space-y-6">
@@ -182,21 +415,109 @@ export default function Attendance() {
 
             {/* Filters */}
             <div className="card">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                {/* Quick Date Filters */}
+                <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-slate-200">
+                    <button
+                        onClick={() => applyDateFilter('today')}
+                        className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
+                            filters.dateMode === 'today' 
+                                ? 'bg-primary-600 text-white shadow-md' 
+                                : 'bg-primary-50 text-primary-700 hover:bg-primary-100'
+                        }`}
+                    >
+                        📅 Bugün
+                    </button>
+                    <button
+                        onClick={() => applyDateFilter('yesterday')}
+                        className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
+                            filters.dateMode === 'yesterday' 
+                                ? 'bg-slate-700 text-white shadow-md' 
+                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        }`}
+                    >
+                        ⏮️ Dün
+                    </button>
+                    <button
+                        onClick={() => applyDateFilter('week')}
+                        className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
+                            filters.dateMode === 'week' 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        }`}
+                    >
+                        📊 Bu Hafta
+                    </button>
+                    <button
+                        onClick={() => applyDateFilter('last7')}
+                        className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
+                            filters.dateMode === 'last7' 
+                                ? 'bg-indigo-600 text-white shadow-md' 
+                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        }`}
+                    >
+                        📈 Son 7 Gün
+                    </button>
+                    <button
+                        onClick={() => applyDateFilter('month')}
+                        className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
+                            filters.dateMode === 'month' 
+                                ? 'bg-purple-600 text-white shadow-md' 
+                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                        }`}
+                    >
+                        📆 Bu Ay
+                    </button>
+                    <button
+                        onClick={() => applyDateFilter('all')}
+                        className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
+                            filters.dateMode === 'all' 
+                                ? 'bg-green-600 text-white shadow-md' 
+                                : 'bg-green-50 text-green-700 hover:bg-green-100'
+                        }`}
+                    >
+                        🌐 Tüm Tarihler
+                    </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    {/* Başlangıç Tarihi */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1.5">Tarih</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Başlangıç Tarihi
+                        </label>
                         <input
                             type="date"
-                            value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
+                            value={filters.startDate}
+                            onChange={(e) => {
+                                setFilters(prev => ({ ...prev, startDate: e.target.value, dateMode: 'custom' }))
+                            }}
                             className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                     </div>
+                    
+                    {/* Bitiş Tarihi */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1.5">Proje</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Bitiş Tarihi
+                        </label>
+                        <input
+                            type="date"
+                            value={filters.endDate}
+                            onChange={(e) => {
+                                setFilters(prev => ({ ...prev, endDate: e.target.value, dateMode: 'custom' }))
+                            }}
+                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                    </div>
+                    
+                    {/* Proje Filtresi */}
+                    <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Proje
+                        </label>
                         <select
-                            value={filterProject}
-                            onChange={(e) => setFilterProject(e.target.value)}
+                            value={filters.projectId}
+                            onChange={(e) => setFilters(prev => ({ ...prev, projectId: e.target.value }))}
                             className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         >
                             <option value="">Tüm Projeler</option>
@@ -205,30 +526,61 @@ export default function Attendance() {
                             ))}
                         </select>
                     </div>
+                    
+                    {/* Durum Filtresi */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1.5">Durum</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Durum
+                        </label>
                         <select
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
+                            value={filters.status}
+                            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                             className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         >
                             <option value="">Tüm Durumlar</option>
-                            <option value="Geldi">✓ Geldi</option>
-                            <option value="Gelmedi">✗ Gelmedi</option>
+                            <option value="Geldi">✅ Geldi</option>
+                            <option value="Gelmedi">❌ Gelmedi</option>
                             <option value="İzinli">📅 İzinli/Raporlu</option>
                         </select>
                     </div>
+                    
+                    {/* Temizle Butonu */}
                     <div>
                         <button
-                            onClick={() => {
-                                setFilterDate(new Date().toISOString().split('T')[0])
-                                setFilterProject('')
-                                setFilterStatus('')
-                            }}
-                            className="w-full px-3 py-2 text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors font-medium"
+                            onClick={clearFilters}
+                            className="w-full px-4 py-2 text-sm border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
                         >
+                            <AlertCircle size={16} />
                             Filtreleri Temizle
                         </button>
+                    </div>
+                </div>
+                
+                {/* Active Filter Summary */}
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <span className="font-semibold">Aktif Filtreler:</span>
+                        {filters.dateMode !== 'all' && (
+                            <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded">
+                                📅 {filters.startDate === filters.endDate 
+                                    ? new Date(filters.startDate).toLocaleDateString('tr-TR')
+                                    : `${new Date(filters.startDate).toLocaleDateString('tr-TR')} - ${new Date(filters.endDate).toLocaleDateString('tr-TR')}`
+                                }
+                            </span>
+                        )}
+                        {filters.projectId && (
+                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                                🏗️ {projects.find(p => p.id === parseInt(filters.projectId))?.name}
+                            </span>
+                        )}
+                        {filters.status && (
+                            <span className="px-2 py-1 bg-green-50 text-green-700 rounded">
+                                {filters.status === 'Geldi' ? '✅' : filters.status === 'Gelmedi' ? '❌' : '📅'} {filters.status}
+                            </span>
+                        )}
+                        <span className="ml-auto font-semibold text-primary-600">
+                            {filteredAttendances.length} kayıt bulundu
+                        </span>
                     </div>
                 </div>
             </div>
@@ -269,7 +621,7 @@ export default function Attendance() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredAttendances.map(attendance => (
+                                paginatedAttendances.map(attendance => (
                                     <tr key={attendance.id} className="hover:bg-slate-50 transition-colors group">
                                         <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                             {new Date(attendance.date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -327,8 +679,51 @@ export default function Attendance() {
                     </table>
                 </div>
 
-                {/* Pagination Info */}
-                {!isLoading && filteredAttendances.length > 0 && (
+                {/* Pagination Controls */}
+                {!isLoading && filteredAttendances.length > itemsPerPage && (
+                    <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                        <div className="text-sm text-slate-600">
+                            <span className="font-semibold text-slate-800">{startIndex + 1}</span> - <span className="font-semibold text-slate-800">{Math.min(endIndex, filteredAttendances.length)}</span> arası gösteriliyor (Toplam: <span className="font-semibold text-slate-800">{filteredAttendances.length}</span>)
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Önceki
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {getPageNumbers().map((page, index) => (
+                                    page === '...' ? (
+                                        <span key={`ellipsis-${index}`} className="px-2 text-slate-400">...</span>
+                                    ) : (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                                                currentPage === page
+                                                    ? 'bg-primary-600 text-white font-semibold'
+                                                    : 'border border-slate-300 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    )
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Sonraki
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {!isLoading && filteredAttendances.length > 0 && filteredAttendances.length <= itemsPerPage && (
                     <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 text-sm text-slate-600">
                         Toplam <span className="font-semibold text-slate-800">{filteredAttendances.length}</span> kayıt gösteriliyor
                     </div>

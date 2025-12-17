@@ -153,6 +153,54 @@ export default function Expenses() {
 
     const totalAmount = filteredExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 15
+
+    // Paginated data
+    const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex)
+
+    // Akıllı pagination gösterimi için sayfa numaralarını hesapla
+    const getPageNumbers = () => {
+        const pages = []
+        const maxPagesToShow = 7
+        
+        if (totalPages <= maxPagesToShow) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i)
+            }
+        } else {
+            pages.push(1)
+            
+            if (currentPage > 3) {
+                pages.push('...')
+            }
+            
+            const start = Math.max(2, currentPage - 1)
+            const end = Math.min(totalPages - 1, currentPage + 1)
+            
+            for (let i = start; i <= end; i++) {
+                pages.push(i)
+            }
+            
+            if (currentPage < totalPages - 2) {
+                pages.push('...')
+            }
+            
+            pages.push(totalPages)
+        }
+        
+        return pages
+    }
+
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [filterProject])
+
     return (
         <>
             <div className="space-y-6">
@@ -220,7 +268,7 @@ export default function Expenses() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {filteredExpenses.map(expense => (
+                        {paginatedExpenses.map(expense => (
                             <div
                                 key={expense.id}
                                 className="bg-white p-6 rounded-2xl border border-slate-200 hover:shadow-lg transition-all cursor-pointer"
@@ -276,8 +324,60 @@ export default function Expenses() {
                     </div>
                 )}
 
-                {showModal && (
-                    <Portal>
+                {/* Pagination Controls */}
+                {!isLoading && filteredExpenses.length > itemsPerPage && (
+                    <div className="mt-6 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                        <div className="text-sm text-slate-600">
+                            <span className="font-semibold text-slate-800">{startIndex + 1}</span> - <span className="font-semibold text-slate-800">{Math.min(endIndex, filteredExpenses.length)}</span> arası gösteriliyor (Toplam: <span className="font-semibold text-slate-800">{filteredExpenses.length}</span>)
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Önceki
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {getPageNumbers().map((page, index) => (
+                                    page === '...' ? (
+                                        <span key={`ellipsis-${index}`} className="px-2 text-slate-400">...</span>
+                                    ) : (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                                                currentPage === page
+                                                    ? 'bg-primary-600 text-white font-semibold'
+                                                    : 'border border-slate-300 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    )
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Sonraki
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {!isLoading && filteredExpenses.length > 0 && filteredExpenses.length <= itemsPerPage && (
+                    <div className="mt-6 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">
+                        Toplam <span className="font-semibold text-slate-800">{filteredExpenses.length}</span> kayıt gösteriliyor
+                    </div>
+                )}
+            </div>
+
+            {/* Modal */}
+            {showModal && (
+                <Portal>
                         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                                 <h2 className="text-2xl font-bold text-slate-800 mb-6">
@@ -686,7 +786,6 @@ export default function Expenses() {
                         </div>
                     </Portal>
                 )}
-            </div>
         </>
     )
 }

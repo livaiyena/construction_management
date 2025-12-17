@@ -9,11 +9,11 @@ router.get('/', auth, async (req, res) => {
         const selectQuery = `
             SELECT 
                 a.*,
-                e.id as "employee_id",
-                e.first_name as "employee_first_name",
-                e.last_name as "employee_last_name",
-                p.id as "project_id",
-                p.name as "project_name"
+                e.id as employee_id,
+                e.first_name as employee_first_name,
+                e.last_name as employee_last_name,
+                p.id as project_id,
+                p.name as project_name
             FROM "Attendances" a
             LEFT JOIN "Employees" e ON a."EmployeeId" = e.id
             LEFT JOIN "Projects" p ON a."ProjectId" = p.id
@@ -59,9 +59,9 @@ router.get('/project/:projectId', auth, async (req, res) => {
         const selectQuery = `
             SELECT 
                 a.*,
-                e.id as "employee_id",
-                e.first_name as "employee_first_name",
-                e.last_name as "employee_last_name"
+                e.id as employee_id,
+                e.first_name as employee_first_name,
+                e.last_name as employee_last_name
             FROM "Attendances" a
             LEFT JOIN "Employees" e ON a."EmployeeId" = e.id
             WHERE a."ProjectId" = $1 AND a."userId" = $2

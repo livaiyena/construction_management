@@ -20,25 +20,35 @@ export default function SystemLogs() {
         try {
             const res = await api.get('/audit')
             // Backend'den gelen veri yapısı: { logs: [], pagination: {} }
-            // Ancak api/audit endpoint'i şu an direkt array mi dönüyor yoksa obje mi kontrol etmeli.
-            // routes/audit.js'ye göre: res.json({ logs, pagination }) dönüyor.
             if (res.data && res.data.logs) {
                 const mappedLogs = res.data.logs.map(log => ({
-                    ...log,
+                    id: log.id,
                     timestamp: log.createdAt,
-                    category: log.entity,
-                    message: log.description,
-                    type: log.status
+                    category: log.tableName,
+                    entity: log.tableName,
+                    description: `${log.action} - ${log.tableName} (ID: ${log.recordId})`,
+                    message: `${log.action} - ${log.tableName}`,
+                    type: log.action,
+                    status: log.action,
+                    user: log.User?.name || log.userName || 'Sistem',
+                    ipAddress: log.ipAddress,
+                    changes: log.changes
                 }))
                 setLogs(mappedLogs)
             } else if (Array.isArray(res.data)) {
                 // Fallback for array response
                 const mappedLogs = res.data.map(log => ({
-                    ...log,
+                    id: log.id,
                     timestamp: log.createdAt,
-                    category: log.entity,
-                    message: log.description,
-                    type: log.status
+                    category: log.tableName,
+                    entity: log.tableName,
+                    description: `${log.action} - ${log.tableName} (ID: ${log.recordId})`,
+                    message: `${log.action} - ${log.tableName}`,
+                    type: log.action,
+                    status: log.action,
+                    user: log.User?.name || log.userName || 'Sistem',
+                    ipAddress: log.ipAddress,
+                    changes: log.changes
                 }))
                 setLogs(mappedLogs)
             }

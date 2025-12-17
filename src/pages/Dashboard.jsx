@@ -83,9 +83,16 @@ export default function Dashboard() {
                 return acc
             }, [])
 
-            // Yoklama durumları
-            const today = new Date().toISOString().split('T')[0]
-            const todayAttendance = attendance.filter(a => a.date === today)
+            // Yoklama durumları - Tarih karşılaştırmasını local timezone ile normalize et
+            const today = new Date()
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+            
+            const todayAttendance = attendance.filter(a => {
+                if (!a.date) return false
+                const attendanceDate = new Date(a.date)
+                const attendanceDateStr = `${attendanceDate.getFullYear()}-${String(attendanceDate.getMonth() + 1).padStart(2, '0')}-${String(attendanceDate.getDate()).padStart(2, '0')}`
+                return attendanceDateStr === todayStr
+            })
             const attendanceStats = {
                 present: todayAttendance.filter(a => a.status === 'Geldi').length,
                 absent: todayAttendance.filter(a => a.status === 'Gelmedi').length,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Briefcase, Plus, Search } from 'lucide-react'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
+import Portal from '../components/Portal'
 
 export default function Roles() {
     const [roles, setRoles] = useState([])
@@ -11,7 +12,6 @@ export default function Roles() {
     const { showToast } = useToast()
     const [formData, setFormData] = useState({
         name: '',
-        description: '',
         default_daily_rate: ''
     })
 
@@ -35,11 +35,11 @@ export default function Roles() {
         try {
             await api.post('/roles', formData)
             showToast('Rol eklendi', 'success')
-            setShowModal(false)
-            setFormData({ name: '', description: '', default_daily_rate: '' })
+            handleModalClose()
             fetchRoles()
         } catch (error) {
-            showToast('Hata oluştu', 'error')
+            console.error('Rol ekleme hatası:', error)
+            showToast(error.response?.data?.message || 'Hata oluştu', 'error')
         }
     }
 
@@ -48,11 +48,21 @@ export default function Roles() {
         role.description?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
+    const handleModalOpen = () => {
+        setFormData({ name: '', description: '', default_daily_rate: '' })
+        setShowModal(true)
+    }
+
+    const handleModalClose = () => {
+        setFormData({ name: '', description: '', default_daily_rate: '' })
+        setShowModal(false)
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-slate-800">Rol Yönetimi</h2>
-                <button onClick={() => setShowModal(true)} className="btn-primary">
+                <button onClick={handleModalOpen} className="btn-primary">
                     <Plus size={20} /> Yeni Rol
                 </button>
             </div>
@@ -114,39 +124,34 @@ export default function Roles() {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4">Yeni Rol Ekle</h3>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <input
-                                type="text"
-                                placeholder="Rol Adı (örn: Usta, Kalifiye İşçi)"
-                                className="input-field"
-                                value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                required
-                            />
-                            <textarea
-                                placeholder="Açıklama"
-                                className="input-field resize-none"
-                                rows="3"
-                                value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            />
-                            <input
-                                type="number"
-                                placeholder="Varsayılan Günlük Ücret (₺)"
-                                className="input-field"
-                                value={formData.default_daily_rate}
-                                onChange={(e) => setFormData({...formData, default_daily_rate: e.target.value})}
-                            />
-                            <div className="flex gap-3">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 btn-secondary">İptal</button>
-                                <button type="submit" className="flex-1 btn-primary">Kaydet</button>
-                            </div>
-                        </form>
+                <Portal>
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleModalClose}>
+                        <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+                            <h3 className="text-xl font-bold mb-4">Yeni Rol Ekle</h3>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <input
+                                    type="text"
+                                    placeholder="Rol Adı (örn: Usta, Kalifiye İşçi)"
+                                    className="input-field"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    required
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="Varsayılan Günlük Ücret (₺)"
+                                    className="input-field"
+                                    value={formData.default_daily_rate}
+                                    onChange={(e) => setFormData({...formData, default_daily_rate: e.target.value})}
+                                />
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={handleModalClose} className="flex-1 btn-secondary">İptal</button>
+                                    <button type="submit" className="flex-1 btn-primary">Kaydet</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </Portal>
             )}
         </div>
     )

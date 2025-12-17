@@ -347,11 +347,11 @@ async function seed() {
         }
         console.log(`   ✅ ${employeeIds.length} çalışan eklendi\n`);
 
-        // 10. YOKLAMA KAYITLARI (Attendances) - Son 30 gün
-        console.log('📅 10/13 - Yoklama kayıtları ekleniyor (bu biraz sürebilir)...');
+        // 10. YOKLAMA KAYITLARI (Attendances) - Son 7 gün (bugünden itibaren)
+        console.log('📅 10/13 - Yoklama kayıtları ekleniyor (son 7 gün)...');
         let attendanceCount = 0;
 
-        for (let day = 0; day < 30; day++) {
+        for (let day = 0; day < 7; day++) {
             const date = new Date();
             date.setDate(date.getDate() - day);
             const dateStr = date.toISOString().split('T')[0];
@@ -385,8 +385,8 @@ async function seed() {
                 attendanceCount++;
             }
 
-            if ((day + 1) % 10 === 0) {
-                console.log(`   📊 ${day + 1}/30 gün tamamlandı (${attendanceCount} kayıt)`);
+            if ((day + 1) % 3 === 0 || day === 6) {
+                console.log(`   📊 ${day + 1}/7 gün tamamlandı (${attendanceCount} kayıt)`);
             }
         }
         console.log(`   ✅ ${attendanceCount} yoklama kaydı eklendi\n`);
