@@ -144,4 +144,38 @@ router.get('/me', async (req, res) => {
     }
 });
 
+// Reset Password (Direct)
+router.post('/reset-password-direct', async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return res.status(400).json({ message: 'Email ve yeni şifre gereklidir' });
+        }
+
+        // Find user
+        const findQuery = 'SELECT * FROM "Users" WHERE "email" = $1';
+        const result = await query(findQuery, [email]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+        }
+
+        const user = result.rows[0];
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        const updateQuery = 'UPDATE "Users" SET "password" = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = $2';
+        await query(updateQuery, [hashedPassword, user.id]);
+
+        res.json({ message: 'Şifreniz başarıyla güncellendi! Giriş yapabilirsiniz.' });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Şifre sıfırlama başarısız', error: error.message });
+    }
+});
+
 module.exports = router;
