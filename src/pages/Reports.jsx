@@ -25,7 +25,11 @@ export default function Reports() {
         { id: 'project-performance', name: 'Proje Performansı', icon: TrendingUp, sql: 'Complex Aggregations' },
         { id: 'weekly-attendance', name: 'Haftalık Yoklama', icon: Calendar, sql: 'Date Grouping, Percentages' },
         { id: 'most-expensive-projects', name: 'En Pahalı Projeler', icon: Building2, sql: 'Nested Query, TOP N' },
-        { id: 'employee-cost-report', name: 'Çalışan Maliyet Raporu', icon: Users, sql: 'FILTER, Complex JOIN' }
+        { id: 'employee-cost-report', name: 'Çalışan Maliyet Raporu', icon: Users, sql: 'FILTER, Complex JOIN' },
+        { id: 'employee-performance', name: '📊 VIEW: Çalışan Performans Raporu', icon: TrendingUp, sql: 'VIEW - vw_employee_project_performance', type: 'view' },
+        { id: 'project-cost-analysis', name: '📊 VIEW: Proje Maliyet Analizi', icon: DollarSign, sql: 'VIEW - vw_project_cost_summary', type: 'view' },
+        { id: 'monthly-attendance/2025/12', name: '⚙️ PROCEDURE: Aralık 2025 Yoklama', icon: Calendar, sql: 'STORED PROCEDURE - sp_monthly_attendance_report', type: 'procedure' },
+        { id: 'budget-alerts', name: '⚙️ PROCEDURE: Bütçe Uyarı Raporu', icon: DollarSign, sql: 'STORED PROCEDURE - sp_budget_alert_projects', type: 'procedure' }
     ]
 
     useEffect(() => {
@@ -109,22 +113,30 @@ export default function Reports() {
                 {/* SOL MENU - Rapor Listesi */}
                 <div className="lg:col-span-1 space-y-2">
                     <h3 className="font-semibold text-slate-700 mb-3 text-sm uppercase tracking-wider">Rapor Türleri</h3>
-                    {reports.map(report => (
-                        <button
-                            key={report.id}
-                            onClick={() => setActiveReport(report.id)}
-                            className={`w-full text-left p-3 rounded-xl transition-all border ${activeReport === report.id
-                                ? 'bg-primary-50 border-primary-200 text-primary-700'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    {reports.map(report => {
+                        const isViewOrProcedure = report.type === 'view' || report.type === 'procedure';
+                        return (
+                            <button
+                                key={report.id}
+                                onClick={() => setActiveReport(report.id)}
+                                className={`w-full text-left p-3 rounded-xl transition-all border ${
+                                    activeReport === report.id
+                                        ? isViewOrProcedure 
+                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                            : 'bg-primary-50 border-primary-200 text-primary-700'
+                                        : isViewOrProcedure
+                                            ? 'bg-emerald-50/30 border-emerald-200 text-slate-700 hover:bg-emerald-50'
+                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
-                        >
-                            <div className="flex items-center gap-2 mb-1">
-                                <report.icon size={16} />
-                                <span className="font-semibold text-sm">{report.name}</span>
-                            </div>
-                            <p className="text-xs opacity-70 ml-6">{report.sql}</p>
-                        </button>
-                    ))}
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <report.icon size={16} />
+                                    <span className="font-semibold text-sm">{report.name}</span>
+                                </div>
+                                <p className="text-xs opacity-70 ml-6">{report.sql}</p>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* SAĞ İÇERİK - Rapor Sonuçları */}
@@ -190,10 +202,12 @@ export default function Reports() {
                             SQL Sorgu Özellikleri
                         </h4>
                         <ul className="text-xs text-blue-800 space-y-1 ml-6 list-disc">
-                            <li>Bu raporlar <strong>Pure SQL</strong> sorguları kullanır (sequelize.query)</li>
+                            <li>Bu raporlar <strong>Pure SQL</strong> sorguları kullanır (Raw SQL)</li>
                             <li>JOIN, GROUP BY, HAVING, Subquery gibi ileri SQL teknikleri içerir</li>
                             <li>Gerçek zamanlı veritabanı verilerinden hesaplanır</li>
                             <li>PostgreSQL native fonksiyonları kullanılır (TO_CHAR, FILTER, etc.)</li>
+                            <li><strong className="text-emerald-700">📊 VIEW:</strong> Karmaşık sorguları basitleştirir, sanal tablo olarak çalışır</li>
+                            <li><strong className="text-emerald-700">⚙️ STORED PROCEDURE:</strong> Parametreli fonksiyonlar, performans avantajı sağlar</li>
                         </ul>
                     </div>
                 </div>

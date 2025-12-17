@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/db-raw');
+const auth = require('../middleware/auth');
 const AuditLogger = require('../utils/auditLogger');
 
 // Register

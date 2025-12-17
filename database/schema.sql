@@ -454,6 +454,187 @@ COMMENT ON COLUMN "AuditLogs"."action" IS 'İşlem tipi: CREATE, UPDATE, DELETE,
 --     FOREIGN KEY ("supplier_id") REFERENCES "Suppliers"("id");
 
 -- ============================================
+-- VIEW (GÖRÜNÜM) TANIMLARI
+-- ============================================
+
+-- VIEW 1: Çalışanların Proje Bazında Performans Özeti
+-- Açıklama: Her çalışanın hangi projelerde kaç gün çalıştığını, 
+-- toplam çalışma saatlerini ve fazla mesai saatlerini gösterir
+DROP VIEW IF EXISTS "vw_employee_project_performance" CASCADE;
+
+CREATE VIEW "vw_employee_project_performance" AS
+SELECT 
+    e."id" AS "employee_id",
+    e."first_name" || ' ' || e."last_name" AS "employee_name",
+    COALESCE(r."name", 'Atanmamış') AS "role_name",
+    p."id" AS "project_id",
+    p."name" AS "project_name",
+    COUNT(DISTINCT a."date") AS "total_attendance_days",
+    SUM(a."worked_hours") AS "total_worked_hours",
+    SUM(a."overtime_hours") AS "total_overtime_hours",
+    ROUND(AVG(a."worked_hours"), 2) AS "avg_daily_hours",
+    SUM(CASE WHEN a."status" = 'Geldi' THEN 1 ELSE 0 END) AS "present_days",
+    SUM(CASE WHEN a."status" = 'Gelmedi' THEN 1 ELSE 0 END) AS "absent_days",
+    ROUND(
+        (SUM(CASE WHEN a."status" = 'Geldi' THEN 1 ELSE 0 END)::NUMERIC / 
+         NULLIF(COUNT(DISTINCT a."date"), 0)) * 100, 
+        2
+    ) AS "attendance_percentage"
+FROM "Employees" e
+LEFT JOIN "Roles" r ON e."RoleId" = r."id"
+LEFT JOIN "Attendances" a ON e."id" = a."EmployeeId"
+LEFT JOIN "Projects" p ON a."ProjectId" = p."id"
+GROUP BY e."id", e."first_name", e."last_name", r."name", p."id", p."name"
+HAVING COUNT(a."id") > 0
+ORDER BY e."id", "total_worked_hours" DESC;
+
+COMMENT ON VIEW "vw_employee_project_performance" IS 
+'Çalışanların proje bazında devam durumu ve çalışma saatleri performans raporu';
+
+-- VIEW 2: Proje Maliyet Özeti
+-- Açıklama: Her projenin toplam harcamalarını, çalışan maliyetlerini 
+-- ve genel bütçe durumunu gösterir
+DROP VIEW IF EXISTS "vw_project_cost_summary" CASCADE;
+
+CREATE VIEW "vw_project_cost_summary" AS
+SELECT 
+    p."id" AS "project_id",
+    p."name" AS "project_name",
+    p."budget",
+    p."status",
+    COALESCE(SUM(ex."amount"), 0) AS "total_expenses",
+    COALESCE(SUM(
+        CASE WHEN ex."category" = 'İşçilik' 
+        THEN ex."amount" 
+        ELSE 0 
+        END
+    ), 0) AS "labor_cost",
+    COALESCE(SUM(
+        CASE WHEN ex."category" = 'Malzeme' 
+        THEN ex."amount" 
+        ELSE 0 
+        END
+    ), 0) AS "material_cost",
+    p."budget" - COALESCE(SUM(ex."amount"), 0) AS "remaining_budget",
+    ROUND(
+        (COALESCE(SUM(ex."amount"), 0) / NULLIF(p."budget", 0)) * 100,
+        2
+    ) AS "budget_usage_percentage"
+FROM "Projects" p
+LEFT JOIN "Expenses" ex ON p."id" = ex."ProjectId"
+GROUP BY p."id", p."name", p."budget", p."status"
+ORDER BY "budget_usage_percentage" DESC;
+
+COMMENT ON VIEW "vw_project_cost_summary" IS 
+'Projelerin maliyet analizi ve bütçe kullanım raporu';
+
+-- ============================================
+-- STORED PROCEDURE (SAKLI YORDAM) TANIMLARI
+-- ============================================
+
+-- STORED PROCEDURE 1: Aylık Yoklama Raporu Oluşturma
+-- Açıklama: Belirli bir ay ve yıl için tüm çalışanların yoklama özetini döndürür
+-- Parametreler: p_year (yıl), p_month (ay)
+DROP FUNCTION IF EXISTS sp_monthly_attendance_report(INTEGER, INTEGER) CASCADE;
+
+CREATE OR REPLACE FUNCTION sp_monthly_attendance_report(
+    p_year INTEGER,
+    p_month INTEGER
+)
+RETURNS TABLE (
+    employee_id INTEGER,
+    employee_name TEXT,
+    emp_position TEXT,
+    total_days INTEGER,
+    present_days INTEGER,
+    absent_days INTEGER,
+    sick_leave_days INTEGER,
+    excused_days INTEGER,
+    total_worked_hours NUMERIC,
+    total_overtime_hours NUMERIC,
+    attendance_rate NUMERIC
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        e."id" AS employee_id,
+        (e."first_name" || ' ' || e."last_name")::TEXT AS employee_name,
+        COALESCE(r."name", 'Atanmamış')::TEXT AS emp_position,
+        COUNT(a."id")::INTEGER AS total_days,
+        SUM(CASE WHEN a."status" = 'Geldi' THEN 1 ELSE 0 END)::INTEGER AS present_days,
+        SUM(CASE WHEN a."status" = 'Gelmedi' THEN 1 ELSE 0 END)::INTEGER AS absent_days,
+        SUM(CASE WHEN a."status" = 'İzinli' THEN 1 ELSE 0 END)::INTEGER AS sick_leave_days,
+        SUM(CASE WHEN a."status" = 'Mazeret' THEN 1 ELSE 0 END)::INTEGER AS excused_days,
+        COALESCE(SUM(a."worked_hours"), 0)::NUMERIC AS total_worked_hours,
+        COALESCE(SUM(a."overtime_hours"), 0)::NUMERIC AS total_overtime_hours,
+        ROUND(
+            (SUM(CASE WHEN a."status" = 'Geldi' THEN 1 ELSE 0 END)::NUMERIC / 
+             NULLIF(COUNT(a."id"), 0)) * 100,
+            2
+        )::NUMERIC AS attendance_rate
+    FROM "Employees" e
+    LEFT JOIN "Roles" r ON e."RoleId" = r."id"
+    LEFT JOIN "Attendances" a ON e."id" = a."EmployeeId"
+        AND EXTRACT(YEAR FROM a."date") = p_year
+        AND EXTRACT(MONTH FROM a."date") = p_month
+    GROUP BY e."id", e."first_name", e."last_name", r."name"
+    HAVING COUNT(a."id") > 0
+    ORDER BY attendance_rate DESC, employee_name;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION sp_monthly_attendance_report IS 
+'Aylık yoklama raporu - Parametreler: yıl, ay';
+
+-- STORED PROCEDURE 2: Proje Bütçe Kontrolü ve Uyarı
+-- Açıklama: Proje bütçesinin eşik değerini aşan projeleri listeler
+-- Parametreler: threshold_percentage (eşik yüzdesi, varsayılan 80)
+DROP FUNCTION IF EXISTS sp_budget_alert_projects(NUMERIC) CASCADE;
+
+CREATE OR REPLACE FUNCTION sp_budget_alert_projects(
+    threshold_percentage NUMERIC DEFAULT 80
+)
+RETURNS TABLE (
+    project_id INTEGER,
+    project_name TEXT,
+    project_status TEXT,
+    total_budget NUMERIC,
+    total_spent NUMERIC,
+    remaining_budget NUMERIC,
+    budget_usage_percentage NUMERIC,
+    alert_level TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p."id" AS project_id,
+        p."name"::TEXT AS project_name,
+        p."status"::TEXT AS project_status,
+        p."budget"::NUMERIC AS total_budget,
+        COALESCE(SUM(e."amount"), 0)::NUMERIC AS total_spent,
+        (p."budget" - COALESCE(SUM(e."amount"), 0))::NUMERIC AS remaining_budget,
+        ROUND(
+            (COALESCE(SUM(e."amount"), 0) / NULLIF(p."budget", 0)) * 100,
+            2
+        )::NUMERIC AS budget_usage_percentage,
+        CASE 
+            WHEN (COALESCE(SUM(e."amount"), 0) / NULLIF(p."budget", 0)) * 100 >= 100 THEN 'Kritik'::TEXT
+            WHEN (COALESCE(SUM(e."amount"), 0) / NULLIF(p."budget", 0)) * 100 >= threshold_percentage THEN 'Uyarı'::TEXT
+            ELSE 'Normal'::TEXT
+        END AS alert_level
+    FROM "Projects" p
+    LEFT JOIN "Expenses" e ON p."id" = e."ProjectId"
+    WHERE p."status" IN ('Devam Ediyor', 'Planlanıyor')
+    GROUP BY p."id", p."name", p."status", p."budget"
+    HAVING (COALESCE(SUM(e."amount"), 0) / NULLIF(p."budget", 0)) * 100 >= threshold_percentage
+    ORDER BY budget_usage_percentage DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION sp_budget_alert_projects IS 
+'Bütçe uyarı raporu - Parametre: eşik yüzdesi (varsayılan 80)';
+
+-- ============================================
 -- BAŞARIYLA TAMAMLANDI
--- Toplam 15 tablo oluşturuldu
+-- Toplam 15 tablo, 2 view, 2 stored procedure oluşturuldu
 -- ============================================

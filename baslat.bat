@@ -35,7 +35,7 @@ start "Frontend UI (Port 5173)" cmd /k "npm run dev"
 :: --- TARAYICI ---
 echo.
 echo Sunucularin baslamasi bekleniyor (8 saniye)...
-timeout /t 8 >nul
+timeout /t 3 >nul
 
 echo Tarayici aciliyor...
 start http://localhost:4000

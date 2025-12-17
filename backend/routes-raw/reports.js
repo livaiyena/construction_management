@@ -362,4 +362,95 @@ router.get('/employee-cost-report', async (req, res) => {
     }
 });
 
+// ==================== VIEW: Çalışan Performans Raporu (vw_employee_project_performance) ====================
+// VIEW kullanım örneği - Karmaşık JOIN'leri basitleştirir
+router.get('/employee-performance', async (req, res) => {
+    try {
+        const sqlQuery = `
+            SELECT 
+                employee_id,
+                employee_name,
+                role_name,
+                project_name,
+                total_attendance_days,
+                total_worked_hours,
+                total_overtime_hours,
+                attendance_percentage
+            FROM "vw_employee_project_performance"
+            ORDER BY attendance_percentage DESC, total_worked_hours DESC
+        `;
+
+        const result = await query(sqlQuery);
+        res.json({ data: result.rows, query: sqlQuery.trim() });
+    } catch (error) {
+        console.error('SQL Query Error:', error);
+        res.status(500).json({ message: 'Sorgu hatası', error: error.message });
+    }
+});
+
+// ==================== VIEW: Proje Maliyet Özeti (vw_project_cost_summary) ====================
+// VIEW kullanım örneği - Bütçe analizi
+router.get('/project-cost-analysis', async (req, res) => {
+    try {
+        const sqlQuery = `
+            SELECT 
+                project_id,
+                project_name,
+                budget,
+                status,
+                total_expenses,
+                labor_cost,
+                material_cost,
+                remaining_budget,
+                budget_usage_percentage
+            FROM "vw_project_cost_summary"
+            ORDER BY budget_usage_percentage DESC
+        `;
+
+        const result = await query(sqlQuery);
+        res.json({ data: result.rows, query: sqlQuery.trim() });
+    } catch (error) {
+        console.error('SQL Query Error:', error);
+        res.status(500).json({ message: 'Sorgu hatası', error: error.message });
+    }
+});
+
+// ==================== STORED PROCEDURE: Aylık Yoklama Raporu (sp_monthly_attendance_report) ====================
+// Parametre: yıl ve ay
+router.get('/monthly-attendance/:year/:month', async (req, res) => {
+    try {
+        const { year, month } = req.params;
+        const sqlQuery = `SELECT * FROM sp_monthly_attendance_report(${year}, ${month})`;
+
+        const result = await query(sqlQuery);
+        res.json({ 
+            data: result.rows, 
+            query: sqlQuery.trim(),
+            params: { year, month }
+        });
+    } catch (error) {
+        console.error('SQL Query Error:', error);
+        res.status(500).json({ message: 'Sorgu hatası', error: error.message });
+    }
+});
+
+// ==================== STORED PROCEDURE: Bütçe Uyarı Raporu (sp_budget_alert_projects) ====================
+// Parametre: eşik yüzdesi (varsayılan 80)
+router.get('/budget-alerts', async (req, res) => {
+    try {
+        const threshold = req.query.threshold || 80;
+        const sqlQuery = `SELECT * FROM sp_budget_alert_projects(${threshold})`;
+
+        const result = await query(sqlQuery);
+        res.json({ 
+            data: result.rows, 
+            query: sqlQuery.trim(),
+            params: { threshold }
+        });
+    } catch (error) {
+        console.error('SQL Query Error:', error);
+        res.status(500).json({ message: 'Sorgu hatası', error: error.message });
+    }
+});
+
 module.exports = router;

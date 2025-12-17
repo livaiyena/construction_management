@@ -134,7 +134,46 @@ router.post('/', auth, async (req, res) => {
             req
         );
 
-        res.status(201).json(result.rows[0]);
+        // JOIN ile tam veriyi getir
+        const fullRecord = await query(`
+            SELECT 
+                a.*,
+                e.id as employee_id,
+                e.first_name as employee_first_name,
+                e.last_name as employee_last_name,
+                p.id as project_id,
+                p.name as project_name
+            FROM "Attendances" a
+            LEFT JOIN "Employees" e ON a."EmployeeId" = e.id
+            LEFT JOIN "Projects" p ON a."ProjectId" = p.id
+            WHERE a.id = $1
+        `, [result.rows[0].id]);
+
+        const attendance = fullRecord.rows[0];
+        const formattedResponse = {
+            id: attendance.id,
+            EmployeeId: attendance.EmployeeId,
+            ProjectId: attendance.ProjectId,
+            date: attendance.date,
+            status: attendance.status,
+            worked_hours: attendance.worked_hours,
+            overtime_hours: attendance.overtime_hours,
+            notes: attendance.notes,
+            userId: attendance.userId,
+            createdAt: attendance.createdAt,
+            updatedAt: attendance.updatedAt,
+            Employee: attendance.employee_id ? {
+                id: attendance.employee_id,
+                first_name: attendance.employee_first_name,
+                last_name: attendance.employee_last_name
+            } : null,
+            Project: attendance.project_id ? {
+                id: attendance.project_id,
+                name: attendance.project_name
+            } : null
+        };
+
+        res.status(201).json(formattedResponse);
     } catch (error) {
         console.error('Yoklama kaydı oluşturma hatası:', error);
         res.status(500).json({ message: 'Sunucu hatası', error: error.message });
@@ -192,7 +231,46 @@ router.put('/:id', auth, async (req, res) => {
             req
         );
 
-        res.json(result.rows[0]);
+        // JOIN ile tam veriyi getir
+        const fullRecord = await query(`
+            SELECT 
+                a.*,
+                e.id as employee_id,
+                e.first_name as employee_first_name,
+                e.last_name as employee_last_name,
+                p.id as project_id,
+                p.name as project_name
+            FROM "Attendances" a
+            LEFT JOIN "Employees" e ON a."EmployeeId" = e.id
+            LEFT JOIN "Projects" p ON a."ProjectId" = p.id
+            WHERE a.id = $1
+        `, [id]);
+
+        const attendance = fullRecord.rows[0];
+        const formattedResponse = {
+            id: attendance.id,
+            EmployeeId: attendance.EmployeeId,
+            ProjectId: attendance.ProjectId,
+            date: attendance.date,
+            status: attendance.status,
+            worked_hours: attendance.worked_hours,
+            overtime_hours: attendance.overtime_hours,
+            notes: attendance.notes,
+            userId: attendance.userId,
+            createdAt: attendance.createdAt,
+            updatedAt: attendance.updatedAt,
+            Employee: attendance.employee_id ? {
+                id: attendance.employee_id,
+                first_name: attendance.employee_first_name,
+                last_name: attendance.employee_last_name
+            } : null,
+            Project: attendance.project_id ? {
+                id: attendance.project_id,
+                name: attendance.project_name
+            } : null
+        };
+
+        res.json(formattedResponse);
     } catch (error) {
         console.error('Yoklama kaydı güncelleme hatası:', error);
         res.status(500).json({ message: 'Sunucu hatası', error: error.message });
