@@ -1,21 +1,28 @@
 import { useState, useEffect } from 'react'
 import { Package, Plus, Search, Edit, Trash2, AlertCircle } from 'lucide-react'
 import { materialService, categoryService } from '../services/modules'
+import api from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useNotification } from '../context/NotificationContext'
 
 export default function Warehouse() {
     const [materials, setMaterials] = useState([])
     const [categories, setCategories] = useState([])
+    const [suppliers, setSuppliers] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
+    const [categorySearch, setCategorySearch] = useState('')
+    const [supplierSearch, setSupplierSearch] = useState('')
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+    const [showSupplierDropdown, setShowSupplierDropdown] = useState(false)
     const { showToast } = useToast()
     const { addNotification } = useNotification()
     const [formData, setFormData] = useState({
         name: '',
-        category_id: '',
+        MaterialCategoryId: '',
+        SupplierId: '',
         unit: '',
         stock_quantity: '',
         minimum_stock: '',
@@ -25,12 +32,14 @@ export default function Warehouse() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [materialsData, categoriesData] = await Promise.all([
+                const [materialsData, categoriesData, suppliersData] = await Promise.all([
                     materialService.getAll(),
-                    categoryService.getAll()
+                    categoryService.getAll(),
+                    api.get('/suppliers')
                 ])
                 setMaterials(materialsData)
                 setCategories(categoriesData)
+                setSuppliers(suppliersData.data)
             } catch (error) {
                 console.error('Veri yükleme hatası:', error)
                 showToast('Veriler yüklenirken hata oluştu', 'error')
@@ -40,6 +49,18 @@ export default function Warehouse() {
         }
         loadData()
     }, [showToast])
+
+    // Dropdown'ların dışına tıklayınca kapat
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.warehouse-dropdown-container')) {
+                setShowCategoryDropdown(false)
+                setShowSupplierDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const fetchMaterials = async () => {
         try {
@@ -63,7 +84,9 @@ export default function Warehouse() {
                 addNotification('success', `Yeni malzeme eklendi: ${formData.name}`, 'INVENTORY')
             }
             setShowModal(false)
-            setFormData({ name: '', MaterialCategoryId: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+            setFormData({ name: '', MaterialCategoryId: '', SupplierId: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+            setCategorySearch('')
+            setSupplierSearch('')
             setEditingId(null)
             fetchMaterials()
         } catch (error) {
@@ -75,11 +98,23 @@ export default function Warehouse() {
         setFormData({
             name: material.name,
             MaterialCategoryId: material.MaterialCategoryId,
+            SupplierId: material.SupplierId || '',
             unit: material.unit,
             stock_quantity: material.stock_quantity,
             minimum_stock: material.minimum_stock,
             unit_price: material.unit_price
         })
+        // Seçili kategori ve tedarikçinin adını bul
+        const selectedCat = categories.find(c => c.id === material.MaterialCategoryId)
+        if (selectedCat) {
+            setCategorySearch(selectedCat.name)
+        }
+        if (material.SupplierId) {
+            const selectedSup = suppliers.find(s => s.id === material.SupplierId)
+            if (selectedSup) {
+                setSupplierSearch(selectedSup.name)
+            }
+        }
         setEditingId(material.id)
         setShowModal(true)
     }
@@ -111,7 +146,7 @@ export default function Warehouse() {
                 <h2 className="text-2xl font-bold text-slate-800">Depo & Stok Yönetimi</h2>
                 <button onClick={() => {
                     setEditingId(null)
-                    setFormData({ name: '', MaterialCategoryId: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
+                    setFormData({ name: '', MaterialCategoryId: '', SupplierId: '', unit: '', stock_quantity: '', minimum_stock: '', unit_price: '' })
                     setShowModal(true)
                 }} className="btn-primary">
                     <Plus size={20} /> Yeni Malzeme
@@ -159,6 +194,7 @@ export default function Warehouse() {
                             ) : (
                                 filteredMaterials.map(material => {
                                     const categoryName = categories.find(c => c.id == material.MaterialCategoryId)?.name || material.category || '-'
+                                    const supplierName = suppliers.find(s => s.id == material.SupplierId)?.name || material.supplier || '-'
                                     return (
                                         <tr key={material.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-4 py-4">
@@ -183,7 +219,7 @@ export default function Warehouse() {
                                             <td className="px-4 py-4 text-right">
                                                 <span className="font-semibold text-slate-800">{material.unit_price} ₺</span>
                                             </td>
-                                            <td className="px-4 py-4 text-sm text-slate-600">{material.supplier || '-'}</td>
+                                            <td className="px-4 py-4 text-sm text-slate-600">{supplierName}</td>
                                             <td className="px-4 py-4 text-center">
                                                 {material.stock_quantity < material.minimum_stock ? (
                                                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
@@ -236,17 +272,92 @@ export default function Warehouse() {
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
                             />
-                            <select
-                                className="input-field"
-                                value={formData.MaterialCategoryId}
-                                onChange={(e) => setFormData({ ...formData, MaterialCategoryId: e.target.value })}
-                                required
-                            >
-                                <option value="">Kategori Seçin</option>
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                ))}
-                            </select>
+                            <div className="warehouse-dropdown-container relative">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Kategori *</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Kategori ara..."
+                                        value={categorySearch}
+                                        onChange={(e) => setCategorySearch(e.target.value)}
+                                        onFocus={() => setShowCategoryDropdown(true)}
+                                        className="input-field pr-8"
+                                    />
+                                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                </div>
+                                {showCategoryDropdown && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        {categories
+                                            .filter(cat => cat.name.toLowerCase().includes(categorySearch.toLowerCase()))
+                                            .map(cat => (
+                                                <div
+                                                    key={cat.id}
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, MaterialCategoryId: cat.id })
+                                                        setCategorySearch(cat.name)
+                                                        setShowCategoryDropdown(false)
+                                                    }}
+                                                    className={`px-3 py-2 hover:bg-primary-50 cursor-pointer text-sm ${
+                                                        formData.MaterialCategoryId === cat.id ? 'bg-primary-100 text-primary-700 font-medium' : 'text-slate-700'
+                                                    }`}
+                                                >
+                                                    {cat.name}
+                                                </div>
+                                            ))}
+                                        {categories.filter(cat => cat.name.toLowerCase().includes(categorySearch.toLowerCase())).length === 0 && (
+                                            <div className="px-3 py-2 text-sm text-slate-500">Sonuç bulunamadı</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="warehouse-dropdown-container relative">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Tedarikçi</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Tedarikçi ara (Opsiyonel)..."
+                                        value={supplierSearch}
+                                        onChange={(e) => setSupplierSearch(e.target.value)}
+                                        onFocus={() => setShowSupplierDropdown(true)}
+                                        className="input-field pr-8"
+                                    />
+                                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                </div>
+                                {showSupplierDropdown && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        <div
+                                            onClick={() => {
+                                                setFormData({ ...formData, SupplierId: '' })
+                                                setSupplierSearch('')
+                                                setShowSupplierDropdown(false)
+                                            }}
+                                            className="px-3 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-500 italic"
+                                        >
+                                            Tedarikçi seçme (Boş bırak)
+                                        </div>
+                                        {suppliers
+                                            .filter(sup => sup.name.toLowerCase().includes(supplierSearch.toLowerCase()))
+                                            .map(sup => (
+                                                <div
+                                                    key={sup.id}
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, SupplierId: sup.id })
+                                                        setSupplierSearch(sup.name)
+                                                        setShowSupplierDropdown(false)
+                                                    }}
+                                                    className={`px-3 py-2 hover:bg-primary-50 cursor-pointer text-sm ${
+                                                        formData.SupplierId === sup.id ? 'bg-primary-100 text-primary-700 font-medium' : 'text-slate-700'
+                                                    }`}
+                                                >
+                                                    {sup.name}
+                                                </div>
+                                            ))}
+                                        {suppliers.filter(sup => sup.name.toLowerCase().includes(supplierSearch.toLowerCase())).length === 0 && (
+                                            <div className="px-3 py-2 text-sm text-slate-500">Sonuç bulunamadı</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <input
                                     type="text"

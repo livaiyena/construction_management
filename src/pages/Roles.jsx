@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Briefcase, Plus, Search } from 'lucide-react'
+import { Briefcase, Plus, Search, Edit2, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
 import Portal from '../components/Portal'
@@ -9,6 +9,7 @@ export default function Roles() {
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [editingRole, setEditingRole] = useState(null)
     const { showToast } = useToast()
     const [formData, setFormData] = useState({
         name: '',
@@ -33,12 +34,39 @@ export default function Roles() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            await api.post('/roles', formData)
-            showToast('Rol eklendi', 'success')
+            if (editingRole) {
+                await api.put(`/roles/${editingRole.id}`, formData)
+                showToast('Rol güncellendi', 'success')
+            } else {
+                await api.post('/roles', formData)
+                showToast('Rol eklendi', 'success')
+            }
             handleModalClose()
             fetchRoles()
         } catch (error) {
-            console.error('Rol ekleme hatası:', error)
+            console.error('Rol kaydetme hatası:', error)
+            showToast(error.response?.data?.message || 'Hata oluştu', 'error')
+        }
+    }
+
+    const handleEdit = (role) => {
+        setEditingRole(role)
+        setFormData({
+            name: role.name,
+            default_daily_rate: role.default_daily_rate || ''
+        })
+        setShowModal(true)
+    }
+
+    const handleDelete = async (id) => {
+        if (!confirm('Bu rolü silmek istediğinize emin misiniz?')) return
+        
+        try {
+            await api.delete(`/roles/${id}`)
+            showToast('Rol silindi', 'success')
+            fetchRoles()
+        } catch (error) {
+            console.error('Rol silme hatası:', error)
             showToast(error.response?.data?.message || 'Hata oluştu', 'error')
         }
     }
@@ -49,12 +77,14 @@ export default function Roles() {
     )
 
     const handleModalOpen = () => {
-        setFormData({ name: '', description: '', default_daily_rate: '' })
+        setEditingRole(null)
+        setFormData({ name: '', default_daily_rate: '' })
         setShowModal(true)
     }
 
     const handleModalClose = () => {
-        setFormData({ name: '', description: '', default_daily_rate: '' })
+        setEditingRole(null)
+        setFormData({ name: '', default_daily_rate: '' })
         setShowModal(false)
     }
 
@@ -87,16 +117,17 @@ export default function Roles() {
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Çalışan Sayısı</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Varsayılan Günlük Ücret</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Oluşturulma</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="4" className="px-4 py-12 text-center text-slate-500">Yükleniyor...</td>
+                                    <td colSpan="5" className="px-4 py-12 text-center text-slate-500">Yükleniyor...</td>
                                 </tr>
                             ) : filteredRoles.length === 0 ? (
                                 <tr>
-                                    <td colSpan="4" className="px-4 py-12 text-center text-slate-500">
+                                    <td colSpan="5" className="px-4 py-12 text-center text-slate-500">
                                         <Briefcase className="mx-auto text-slate-300 mb-2" size={48} />
                                         Kayıtlı rol bulunamadı
                                     </td>
@@ -123,6 +154,24 @@ export default function Roles() {
                                         <td className="px-4 py-4 text-center text-sm text-slate-600">
                                             {role.createdAt ? new Date(role.createdAt).toLocaleDateString('tr-TR') : '-'}
                                         </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleEdit(role)}
+                                                    className="p-2 text-slate-400 hover:text-primary-600 hover:bg-slate-100 rounded-lg"
+                                                    title="Düzenle"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(role.id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                    title="Sil"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -135,7 +184,9 @@ export default function Roles() {
                 <Portal>
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleModalClose}>
                         <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-                            <h3 className="text-xl font-bold mb-4">Yeni Rol Ekle</h3>
+                            <h3 className="text-xl font-bold mb-4">
+                                {editingRole ? 'Rol Düzenle' : 'Yeni Rol Ekle'}
+                            </h3>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <input
                                     type="text"

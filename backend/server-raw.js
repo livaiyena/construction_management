@@ -31,6 +31,8 @@ app.use('/api/equipment', require('./routes-raw/equipment'));
 app.use('/api/equipment-types', require('./routes-raw/equipmentTypes'));
 app.use('/api/suppliers', require('./routes-raw/suppliers'));
 app.use('/api/documents', require('./routes-raw/documents'));
+app.use('/api/project-equipment', require('./routes-raw/projectEquipment'));
+app.use('/api/project-material', require('./routes-raw/projectMaterial'));
 app.use('/api/audit', require('./routes-raw/audit'));
 app.use('/api/reports', require('./routes-raw/reports'));
 app.use('/api/users', require('./routes-raw/users'));

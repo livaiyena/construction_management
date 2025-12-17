@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, MapPin, Calendar, X, Search, Edit2, Trash2, ArrowRight, Loader2, AlertCircle, Building2 } from 'lucide-react'
+import { Plus, MapPin, Calendar, X, Search, Edit2, Trash2, ArrowRight, Loader2, AlertCircle, Building2, Wrench, Package } from 'lucide-react'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useNotification } from '../context/NotificationContext'
@@ -11,6 +11,7 @@ export default function Projects() {
     const [showModal, setShowModal] = useState(false)
     const [showDetailModal, setShowDetailModal] = useState(false)
     const [selectedProject, setSelectedProject] = useState(null)
+    const [detailTab, setDetailTab] = useState('overview') // Tab state
     const [isEditing, setIsEditing] = useState(false)
     const [editId, setEditId] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -498,10 +499,10 @@ export default function Projects() {
                 {/* PROJE DETAY MODAL */}
                 {showDetailModal && selectedProject && (
                     <Portal>
-                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => setShowDetailModal(false)}>
-                            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in" onClick={() => { setShowDetailModal(false); setDetailTab('overview'); }}>
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
                                 {/* Modal Header */}
-                                <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white">
+                                <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white flex-shrink-0">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1">
                                             <h2 className="text-2xl font-bold mb-2">{selectedProject.name}</h2>
@@ -519,7 +520,7 @@ export default function Projects() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => setShowDetailModal(false)}
+                                            onClick={() => { setShowDetailModal(false); setDetailTab('overview'); }}
                                             className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-4"
                                         >
                                             ✕
@@ -527,56 +528,104 @@ export default function Projects() {
                                     </div>
                                 </div>
 
-                                {/* Modal Content */}
-                                <div className="p-6 overflow-y-auto max-h-[calc(85vh-220px)]">
-                                    {/* Proje Bilgileri Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                        {/* Başlangıç Tarihi */}
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                            <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Başlangıç Tarihi</p>
-                                            <p className="text-lg font-bold text-slate-800">
-                                                {new Date(selectedProject.start_date).toLocaleDateString('tr-TR')}
-                                            </p>
-                                        </div>
+                                {/* Tab Navigation */}
+                                <div className="flex border-b border-slate-200 bg-slate-50 px-6 flex-shrink-0">
+                                    <button
+                                        onClick={() => setDetailTab('overview')}
+                                        className={`px-4 py-3 font-semibold text-sm transition-colors border-b-2 ${
+                                            detailTab === 'overview' 
+                                                ? 'border-primary-600 text-primary-600' 
+                                                : 'border-transparent text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        Genel Bilgiler
+                                    </button>
+                                    <button
+                                        onClick={() => setDetailTab('equipment')}
+                                        className={`px-4 py-3 font-semibold text-sm transition-colors border-b-2 flex items-center gap-2 ${
+                                            detailTab === 'equipment' 
+                                                ? 'border-primary-600 text-primary-600' 
+                                                : 'border-transparent text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Wrench size={16} />
+                                        Kullanılan Ekipmanlar
+                                    </button>
+                                    <button
+                                        onClick={() => setDetailTab('materials')}
+                                        className={`px-4 py-3 font-semibold text-sm transition-colors border-b-2 flex items-center gap-2 ${
+                                            detailTab === 'materials' 
+                                                ? 'border-primary-600 text-primary-600' 
+                                                : 'border-transparent text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Package size={16} />
+                                        Kullanılan Malzemeler
+                                    </button>
+                                </div>
 
-                                        {/* Bütçe */}
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                            <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Bütçe</p>
-                                            <p className="text-lg font-bold text-primary-600">
-                                                {(() => {
-                                                    const currency = selectedProject.currency || 'TRY'
-                                                    const symbols = { TRY: '₺', USD: '$', EUR: '€', GBP: '£' }
-                                                    return `${parseFloat(selectedProject.budget).toLocaleString('tr-TR')} ${symbols[currency]}`
-                                                })()}
-                                            </p>
-                                        </div>
-                                    </div>
+                                {/* Tab Content */}
+                                <div className="flex-1 overflow-y-auto p-6">
+                                    {detailTab === 'overview' && (
+                                        <div>
+                                            {/* Proje Bilgileri Grid */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                                {/* Başlangıç Tarihi */}
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                    <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Başlangıç Tarihi</p>
+                                                    <p className="text-lg font-bold text-slate-800">
+                                                        {new Date(selectedProject.start_date).toLocaleDateString('tr-TR')}
+                                                    </p>
+                                                </div>
 
-                                    {/* Adres Bilgisi */}
-                                    {selectedProject.address && (
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
-                                            <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Adres</p>
-                                            <p className="text-sm text-slate-700 leading-relaxed">{selectedProject.address}</p>
+                                                {/* Bütçe */}
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                    <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">Bütçe</p>
+                                                    <p className="text-lg font-bold text-primary-600">
+                                                        {(() => {
+                                                            const currency = selectedProject.currency || 'TRY'
+                                                            const symbols = { TRY: '₺', USD: '$', EUR: '€', GBP: '£' }
+                                                            return `${parseFloat(selectedProject.budget).toLocaleString('tr-TR')} ${symbols[currency]}`
+                                                        })()}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Adres Bilgisi */}
+                                            {selectedProject.address && (
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                                                    <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Adres</p>
+                                                    <p className="text-sm text-slate-700 leading-relaxed">{selectedProject.address}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Proje İstatistikleri */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                                                    <p className="text-xs text-emerald-600 font-semibold mb-1">Durum</p>
+                                                    <p className="text-2xl font-bold text-emerald-700">{selectedProject.status}</p>
+                                                </div>
+                                                <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                                    <p className="text-xs text-blue-600 font-semibold mb-1">Konum</p>
+                                                    <p className="text-sm font-bold text-blue-700">{selectedProject.city}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* Proje İstatistikleri */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                                            <p className="text-xs text-emerald-600 font-semibold mb-1">Durum</p>
-                                            <p className="text-2xl font-bold text-emerald-700">{selectedProject.status}</p>
-                                        </div>
-                                        <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                                            <p className="text-xs text-blue-600 font-semibold mb-1">Konum</p>
-                                            <p className="text-sm font-bold text-blue-700">{selectedProject.city}</p>
-                                        </div>
-                                    </div>
+                                    {detailTab === 'equipment' && (
+                                        <ProjectEquipmentTab projectId={selectedProject.id} />
+                                    )}
+
+                                    {detailTab === 'materials' && (
+                                        <ProjectMaterialTab projectId={selectedProject.id} />
+                                    )}
                                 </div>
 
                                 {/* Modal Footer */}
-                                <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3">
+                                <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3 flex-shrink-0">
                                     <button
-                                        onClick={() => setShowDetailModal(false)}
+                                        onClick={() => { setShowDetailModal(false); setDetailTab('overview'); }}
                                         className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold"
                                     >
                                         Kapat
@@ -584,6 +633,7 @@ export default function Projects() {
                                     <button
                                         onClick={() => {
                                             setShowDetailModal(false)
+                                            setDetailTab('overview')
                                             handleEditClick(selectedProject)
                                         }}
                                         className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold flex items-center justify-center gap-2"
@@ -598,5 +648,455 @@ export default function Projects() {
                 )}
             </div>
         </>
+    )
+}
+
+// ProjectEquipmentTab Bileşeni
+function ProjectEquipmentTab({ projectId }) {
+    const [equipment, setEquipment] = useState([])
+    const [allEquipment, setAllEquipment] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [showAddForm, setShowAddForm] = useState(false)
+    const [editingId, setEditingId] = useState(null)
+    const [equipmentSearch, setEquipmentSearch] = useState('')
+    const [showEquipmentDropdown, setShowEquipmentDropdown] = useState(false)
+    const { showToast } = useToast()
+    const [formData, setFormData] = useState({
+        EquipmentId: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        daily_cost: '',
+        notes: ''
+    })
+
+    useEffect(() => {
+        fetchData()
+    }, [projectId])
+
+    // Dropdown'ların dışına tıklayınca kapat
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.equipment-dropdown-container')) {
+                setShowEquipmentDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const fetchData = async () => {
+        setLoading(true)
+        try {
+            const [equipRes, allEquipRes] = await Promise.all([
+                api.get(`/project-equipment?projectId=${projectId}`),
+                api.get('/equipment')
+            ])
+            setEquipment(equipRes.data)
+            setAllEquipment(allEquipRes.data)
+        } catch (error) {
+            console.error('ProjectEquipment fetch error:', error)
+            showToast('Veriler yüklenemedi: ' + (error.response?.data?.message || error.message), 'error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleEdit = (eq) => {
+        setEditingId(eq.id)
+        setFormData({
+            EquipmentId: eq.EquipmentId,
+            start_date: eq.start_date ? new Date(eq.start_date).toISOString().split('T')[0] : '',
+            end_date: eq.end_date ? new Date(eq.end_date).toISOString().split('T')[0] : '',
+            daily_cost: eq.daily_cost || '',
+            notes: eq.notes || ''
+        })
+        // Seçili ekipmanın adını bul ve search input'a koy
+        const selectedEq = allEquipment.find(e => e.id === eq.EquipmentId)
+        if (selectedEq) {
+            setEquipmentSearch(selectedEq.name)
+        }
+        setShowAddForm(true)
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        try {
+            if (editingId) {
+                await api.put(`/project-equipment/${editingId}`, {
+                    ...formData,
+                    ProjectId: projectId
+                })
+                showToast('Ekipman güncellendi', 'success')
+            } else {
+                await api.post('/project-equipment', {
+                    ...formData,
+                    ProjectId: projectId
+                })
+                showToast('Ekipman eklendi', 'success')
+            }
+            setShowAddForm(false)
+            setEditingId(null)
+            setEquipmentSearch('')
+            setFormData({ EquipmentId: '', start_date: new Date().toISOString().split('T')[0], end_date: '', daily_cost: '', notes: '' })
+            fetchData()
+        } catch (error) {
+            console.error('ProjectEquipment submit error:', error)
+            showToast(error.response?.data?.message || 'İşlem başarısız', 'error')
+        }
+    }
+
+    const handleDelete = async (id) => {
+        if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return
+        try {
+            await api.delete(`/project-equipment/${id}`)
+            showToast('Kayıt silindi', 'success')
+            fetchData()
+        } catch (error) {
+            showToast('Silme başarısız', 'error')
+        }
+    }
+
+    if (loading) return <div className="text-center py-8"><Loader2 className="animate-spin mx-auto" size={32} /></div>
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-800">Kullanılan Ekipmanlar ({equipment.length})</h3>
+                <button onClick={() => { 
+                    setShowAddForm(!showAddForm); 
+                    if (showAddForm) { 
+                        setEditingId(null); 
+                        setEquipmentSearch('');
+                        setFormData({ EquipmentId: '', start_date: new Date().toISOString().split('T')[0], end_date: '', daily_cost: '', notes: '' }); 
+                    } 
+                }} className="btn-primary text-sm">
+                    {showAddForm ? 'İptal' : '+ Ekipman Ekle'}
+                </button>
+            </div>
+
+            {showAddForm && (
+                <form onSubmit={handleSubmit} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <h4 className="font-semibold text-slate-700">{editingId ? 'Ekipman Düzenle' : 'Yeni Ekipman Ekle'}</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="equipment-dropdown-container relative">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Ekipman</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Ekipman ara..."
+                                    value={equipmentSearch}
+                                    onChange={(e) => setEquipmentSearch(e.target.value)}
+                                    onFocus={() => setShowEquipmentDropdown(true)}
+                                    className="input-field pr-8"
+                                />
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                            </div>
+                            {showEquipmentDropdown && (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {allEquipment
+                                        .filter(eq => eq.name.toLowerCase().includes(equipmentSearch.toLowerCase()))
+                                        .map(eq => (
+                                            <div
+                                                key={eq.id}
+                                                onClick={() => {
+                                                    setFormData({ ...formData, EquipmentId: eq.id })
+                                                    setEquipmentSearch(eq.name)
+                                                    setShowEquipmentDropdown(false)
+                                                }}
+                                                className={`px-3 py-2 hover:bg-primary-50 cursor-pointer text-sm ${
+                                                    formData.EquipmentId === eq.id ? 'bg-primary-100 text-primary-700 font-medium' : 'text-slate-700'
+                                                }`}
+                                            >
+                                                {eq.name}
+                                            </div>
+                                        ))}
+                                    {allEquipment.filter(eq => eq.name.toLowerCase().includes(equipmentSearch.toLowerCase())).length === 0 && (
+                                        <div className="px-3 py-2 text-sm text-slate-500">Sonuç bulunamadı</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Günlük Maliyet (₺)</label>
+                            <input type="number" className="input-field" value={formData.daily_cost} onChange={e => setFormData({...formData, daily_cost: e.target.value})} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Başlangıç Tarihi</label>
+                            <input type="date" className="input-field" value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Bitiş Tarihi</label>
+                            <input type="date" className="input-field" value={formData.end_date} onChange={e => setFormData({...formData, end_date: e.target.value})} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Notlar</label>
+                        <textarea className="input-field" rows={2} value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                    </div>
+                    <button type="submit" className="btn-primary w-full">Kaydet</button>
+                </form>
+            )}
+
+            <div className="space-y-3">
+                {equipment.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                        <Wrench className="mx-auto mb-2 text-slate-300" size={48} />
+                        <p>Henüz ekipman kaydı yok</p>
+                    </div>
+                ) : (
+                    equipment.map(eq => (
+                        <div key={eq.id} className="bg-white border border-slate-200 rounded-xl p-4">
+                            <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-slate-800">{eq.equipment_name}</h4>
+                                    <p className="text-sm text-slate-600 mt-1">{eq.equipment_type}</p>
+                                    <div className="flex gap-4 mt-2 text-sm text-slate-600">
+                                        <span>Başlangıç: {new Date(eq.start_date).toLocaleDateString('tr-TR')}</span>
+                                        {eq.end_date && <span>Bitiş: {new Date(eq.end_date).toLocaleDateString('tr-TR')}</span>}
+                                        <span className="font-semibold text-primary-600">{eq.daily_cost} ₺/gün</span>
+                                        <span className="font-semibold">{eq.total_days} gün</span>
+                                    </div>
+                                    {eq.notes && <p className="text-sm text-slate-500 mt-2 italic">{eq.notes}</p>}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleEdit(eq)} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-slate-100 rounded-lg">
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button onClick={() => handleDelete(eq.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ProjectMaterialTab Bileşeni
+function ProjectMaterialTab({ projectId }) {
+    const [materials, setMaterials] = useState([])
+    const [allMaterials, setAllMaterials] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [showAddForm, setShowAddForm] = useState(false)
+    const [editingId, setEditingId] = useState(null)
+    const [materialSearch, setMaterialSearch] = useState('')
+    const [showMaterialDropdown, setShowMaterialDropdown] = useState(false)
+    const { showToast } = useToast()
+    const [formData, setFormData] = useState({
+        MaterialId: '',
+        quantity_used: '',
+        unit_price_at_time: '',
+        date_used: new Date().toISOString().split('T')[0],
+        notes: ''
+    })
+
+    useEffect(() => {
+        fetchData()
+    }, [projectId])
+
+    // Dropdown'ların dışına tıklayınca kapat
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.material-dropdown-container')) {
+                setShowMaterialDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const fetchData = async () => {
+        setLoading(true)
+        try {
+            const [matRes, allMatRes] = await Promise.all([
+                api.get(`/project-material?projectId=${projectId}`),
+                api.get('/materials')
+            ])
+            console.log('ProjectMaterial data:', matRes.data)
+            setMaterials(matRes.data)
+            setAllMaterials(allMatRes.data)
+        } catch (error) {
+            console.error('ProjectMaterial fetch error:', error)
+            showToast('Veriler yüklenemedi: ' + (error.response?.data?.message || error.message), 'error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleEdit = (mat) => {
+        setEditingId(mat.id)
+        setFormData({
+            MaterialId: mat.MaterialId,
+            quantity_used: mat.quantity_used || '',
+            unit_price_at_time: mat.unit_price_at_time || '',
+            date_used: mat.date_used ? new Date(mat.date_used).toISOString().split('T')[0] : '',
+            notes: mat.notes || ''
+        })
+        // Seçili malzemenin adını bul ve search input'a koy
+        const selectedMat = allMaterials.find(m => m.id === mat.MaterialId)
+        if (selectedMat) {
+            setMaterialSearch(selectedMat.name)
+        }
+        setShowAddForm(true)
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        try {
+            if (editingId) {
+                await api.put(`/project-material/${editingId}`, {
+                    ...formData,
+                    ProjectId: projectId
+                })
+                showToast('Malzeme güncellendi', 'success')
+            } else {
+                await api.post('/project-material', {
+                    ...formData,
+                    ProjectId: projectId
+                })
+                showToast('Malzeme eklendi', 'success')
+            }
+            setShowAddForm(false)
+            setEditingId(null)
+            setMaterialSearch('')
+            setFormData({ MaterialId: '', quantity_used: '', unit_price_at_time: '', date_used: new Date().toISOString().split('T')[0], notes: '' })
+            fetchData()
+        } catch (error) {
+            console.error('ProjectMaterial submit error:', error)
+            showToast(error.response?.data?.message || 'İşlem başarısız', 'error')
+        }
+    }
+
+    const handleDelete = async (id) => {
+        if (!confirm('Bu kaydı silmek istediğinize emin misiniz? Stok geri eklenecek.')) return
+        try {
+            await api.delete(`/project-material/${id}`)
+            showToast('Kayıt silindi ve stok geri eklendi', 'success')
+            fetchData()
+        } catch (error) {
+            showToast('Silme başarısız', 'error')
+        }
+    }
+
+    if (loading) return <div className="text-center py-8"><Loader2 className="animate-spin mx-auto" size={32} /></div>
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-800">Kullanılan Malzemeler ({materials.length})</h3>
+                <button onClick={() => { 
+                    setShowAddForm(!showAddForm); 
+                    if (showAddForm) { 
+                        setEditingId(null); 
+                        setMaterialSearch('');
+                        setFormData({ MaterialId: '', quantity_used: '', unit_price_at_time: '', date_used: new Date().toISOString().split('T')[0], notes: '' }); 
+                    } 
+                }} className="btn-primary text-sm">
+                    {showAddForm ? 'İptal' : '+ Malzeme Ekle'}
+                </button>
+            </div>
+
+            {showAddForm && (
+                <form onSubmit={handleSubmit} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <h4 className="font-semibold text-slate-700">{editingId ? 'Malzeme Düzenle' : 'Yeni Malzeme Ekle'}</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="material-dropdown-container relative">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Malzeme</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Malzeme ara..."
+                                    value={materialSearch}
+                                    onChange={(e) => setMaterialSearch(e.target.value)}
+                                    onFocus={() => setShowMaterialDropdown(true)}
+                                    className="input-field pr-8"
+                                />
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                            </div>
+                            {showMaterialDropdown && (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {allMaterials
+                                        .filter(mat => mat.name.toLowerCase().includes(materialSearch.toLowerCase()))
+                                        .map(mat => (
+                                            <div
+                                                key={mat.id}
+                                                onClick={() => {
+                                                    setFormData({ ...formData, MaterialId: mat.id })
+                                                    setMaterialSearch(`${mat.name} (Stok: ${mat.stock_quantity} ${mat.unit})`)
+                                                    setShowMaterialDropdown(false)
+                                                }}
+                                                className={`px-3 py-2 hover:bg-primary-50 cursor-pointer text-sm ${
+                                                    formData.MaterialId === mat.id ? 'bg-primary-100 text-primary-700 font-medium' : 'text-slate-700'
+                                                }`}
+                                            >
+                                                <div>{mat.name}</div>
+                                                <div className="text-xs text-slate-500">Stok: {mat.stock_quantity} {mat.unit}</div>
+                                            </div>
+                                        ))}
+                                    {allMaterials.filter(mat => mat.name.toLowerCase().includes(materialSearch.toLowerCase())).length === 0 && (
+                                        <div className="px-3 py-2 text-sm text-slate-500">Sonuç bulunamadı</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Kullanım Tarihi</label>
+                            <input type="date" className="input-field" value={formData.date_used} onChange={e => setFormData({...formData, date_used: e.target.value})} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Kullanılan Miktar</label>
+                            <input type="number" step="0.01" className="input-field" value={formData.quantity_used} onChange={e => setFormData({...formData, quantity_used: e.target.value})} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Birim Fiyat (₺)</label>
+                            <input type="number" step="0.01" className="input-field" value={formData.unit_price_at_time} onChange={e => setFormData({...formData, unit_price_at_time: e.target.value})} required />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Notlar</label>
+                        <textarea className="input-field" rows={2} value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                    </div>
+                    <button type="submit" className="btn-primary w-full">Kaydet</button>
+                </form>
+            )}
+
+            <div className="space-y-3">
+                {materials.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                        <Package className="mx-auto mb-2 text-slate-300" size={48} />
+                        <p>Henüz malzeme kaydı yok</p>
+                    </div>
+                ) : (
+                    materials.map(mat => (
+                        <div key={mat.id} className="bg-white border border-slate-200 rounded-xl p-4">
+                            <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-slate-800">{mat.material_name}</h4>
+                                    <p className="text-sm text-slate-600 mt-1">{mat.category_name}</p>
+                                    <div className="flex gap-4 mt-2 text-sm text-slate-600">
+                                        <span>Tarih: {new Date(mat.date_used).toLocaleDateString('tr-TR')}</span>
+                                        <span className="font-semibold">{mat.quantity_used} {mat.material_unit}</span>
+                                        <span className="font-semibold text-primary-600">{mat.unit_price_at_time} ₺/{mat.material_unit}</span>
+                                        <span className="font-bold text-green-600">{(parseFloat(mat.quantity_used) * parseFloat(mat.unit_price_at_time)).toFixed(2)} ₺</span>
+                                    </div>
+                                    {mat.notes && <p className="text-sm text-slate-500 mt-2 italic">{mat.notes}</p>}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleEdit(mat)} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-slate-100 rounded-lg">
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button onClick={() => handleDelete(mat.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
     )
 }
