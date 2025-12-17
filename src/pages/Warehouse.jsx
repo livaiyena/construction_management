@@ -4,6 +4,7 @@ import { materialService, categoryService } from '../services/modules'
 import api from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useNotification } from '../context/NotificationContext'
+import Portal from '../components/Portal'
 
 export default function Warehouse() {
     const [materials, setMaterials] = useState([])
@@ -260,8 +261,9 @@ export default function Warehouse() {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <Portal>
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
+                        <div className="bg-white rounded-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-xl font-bold mb-4">{editingId ? 'Malzeme Düzenle' : 'Yeni Malzeme Ekle'}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input
@@ -280,7 +282,10 @@ export default function Warehouse() {
                                         placeholder="Kategori ara..."
                                         value={categorySearch}
                                         onChange={(e) => setCategorySearch(e.target.value)}
-                                        onFocus={() => setShowCategoryDropdown(true)}
+                                        onFocus={() => {
+                                            setShowCategoryDropdown(true)
+                                            setShowSupplierDropdown(false)
+                                        }}
                                         className="input-field pr-8"
                                     />
                                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
@@ -318,7 +323,10 @@ export default function Warehouse() {
                                         placeholder="Tedarikçi ara (Opsiyonel)..."
                                         value={supplierSearch}
                                         onChange={(e) => setSupplierSearch(e.target.value)}
-                                        onFocus={() => setShowSupplierDropdown(true)}
+                                        onFocus={() => {
+                                            setShowSupplierDropdown(true)
+                                            setShowCategoryDropdown(false)
+                                        }}
                                         className="input-field pr-8"
                                     />
                                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
@@ -395,8 +403,9 @@ export default function Warehouse() {
                                 <button type="submit" className="flex-1 btn-primary">Kaydet</button>
                             </div>
                         </form>
+                        </div>
                     </div>
-                </div>
+                </Portal>
             )}
         </div>
     )
